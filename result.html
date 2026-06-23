@@ -297,7 +297,10 @@ async function callApi(payload) {
     body: JSON.stringify(payload)
   });
 
-  await loadData(); // ← هذه هي الخطوة التي تجعل التناوب يعمل
+  // 🔥 انتظر الشيت يحدّث فعليًا
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  await loadData();
 }
 function setButtonsState(tawkeelState, ramiState) {
   document.getElementById("doTawkeel").disabled = tawkeelState;
