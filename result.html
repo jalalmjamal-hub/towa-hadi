@@ -294,9 +294,8 @@ async function callApi(payload) {
     body: JSON.stringify(payload)
   });
 
-  await loadData(); // إعادة تحميل البيانات بعد التحديث
+  await loadData(); // ← هذه هي الخطوة التي تجعل التناوب يعمل
 }
-
 function setButtonsState(tawkeelState, ramiState) {
   document.getElementById("doTawkeel").disabled = tawkeelState;
   document.getElementById("undoTawkeel").disabled = !tawkeelState;
