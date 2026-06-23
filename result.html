@@ -107,6 +107,12 @@ body::before {
   color: #2e7d32 !important;
 }
 
+/* حالة الذبح */
+#thabh {
+  color: #d32f2f !important;
+  font-weight: 800;
+}
+
 /* أزرار */
 .btn-row {
   display: flex;
@@ -179,13 +185,13 @@ body::before {
   <div class="header-title">بيانات الحاج</div>
 
   <div class="card">
-    <div class="card-title">👤 الاسم</div>
-    <div class="status" id="name">—</div>
+    <div class="card-title">📜 نص التوكيل</div>
+    <div class="status" id="tawkeelText">—</div>
   </div>
 
   <div class="card">
-    <div class="card-title">📜 نص التوكيل</div>
-    <div class="status" id="tawkeelText">—</div>
+    <div class="card-title">👤 الاسم</div>
+    <div class="status" id="name">—</div>
   </div>
 
   <div class="card">
@@ -209,15 +215,11 @@ body::before {
   </div>
 
   <div class="card">
-    <div class="card-title">🔪 الذبح</div>
-    <div class="status" id="thabh">—</div>
-
-    <div class="btn-row">
-      <button id="doThabh" class="btn btn-main">✔ تم الذبح</button>
-      <button id="undoThabh" class="btn btn-danger" disabled>🔄 إلغاء</button>
-    </div>
+    <div class="card-title">🔪 حالة الذبح</div>
+    <div class="status" id="thabh">لم يتم</div>
   </div>
 
+  <button class="btn btn-secondary" onclick="refreshData()">🔄 تحديث البيانات</button>
   <button class="btn btn-secondary" onclick="goBack()">⬅ رجوع</button>
 
 </div>
@@ -236,20 +238,65 @@ const SHEET_URL =
 const API_URL =
   "https://script.google.com/macros/s/AKfycbztL1redTyYlHZSyQgsvICHLAe62IRFHSEM6MDL5NAVcYosFlO1FJgeSea89GzSPy1J/exec";
 
-/* تحميل البيانات الأساسية فقط (الاسم + نص التوكيل) */
+let currentIdOrMobile = "";
+
+/* توحيد الجوال */
+function normalizePhone(raw) {
+  if (!raw) return "";
+  let p = String(raw).trim().replace(/\s+/g, "");
+  if (p.startsWith("+966")) p = p.substring(4);
+  else if (p.startsWith("00966")) p = p.substring(5);
+  if (p.startsWith("05")) p = p.substring(1);
+  else if (p.startsWith("0") && p.length >= 9) p = p.substring(1);
+  return p;
+}
+
+/* توحيد الهوية */
+function normalizeId(raw) {
+  if (!raw) return "";
+  return String(raw).trim().replace(/\s+/g, "");
+}
+
+/* الرجوع */
+function goBack() {
+  window.location.href = "index.html";
+}
+
+/* تحميل البيانات */
 async function loadData() {
   const res = await fetch(SHEET_URL);
   const rows = await res.json();
 
-  let found = rows.find(r =>
-    r["رقم الهوية"] == searchValue ||
-    r["رقم الجوال"] == searchValue
-  );
+  const normalizedSearchPhone = normalizePhone(searchValue);
+  const normalizedSearchId = normalizeId(searchValue);
+
+  let found = rows.find(row => {
+    const id = normalizeId(row["رقم الهوية"]);
+    const mobileNorm = normalizePhone(row["رقم الجوال"]);
+    return (
+      id === normalizedSearchId ||
+      mobileNorm === normalizedSearchPhone ||
+      mobileNorm.endsWith(normalizedSearchPhone)
+    );
+  });
 
   if (!found) return;
 
+  currentIdOrMobile = searchValue;
+
   document.getElementById("name").innerHTML = found["الاسم"];
+  document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
+  document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
+
+  const zabh = found["حالة الذبح"] || "";
+  document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
+
   loadTawkeelText();
+
+  setButtonsState(
+    found["حالة التوكيل"] === "تم التوكيل",
+    found["حالة الرمي"] === "تم الرمي"
+  );
 }
 
 /* تحميل نص التوكيل */
@@ -269,6 +316,15 @@ async function callApi(payload) {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+/* تفعيل وتعطيل الأزرار */
+function setButtonsState(tawkeelState, ramiState) {
+  document.getElementById("doTawkeel").disabled = tawkeelState;
+  document.getElementById("undoTawkeel").disabled = !tawkeelState;
+
+  document.getElementById("doRami").disabled = ramiState;
+  document.getElementById("undoRami").disabled = !ramiState;
 }
 
 /* التوكيل */
@@ -313,30 +369,9 @@ undoRami.onclick = () => {
   callApi({ action: "cancel_rami", id: searchValue });
 };
 
-/* الذبح */
-doThabh.onclick = () => {
-  thabh.innerHTML = "تم الذبح";
-  thabh.classList.add("status-done");
-
-  doThabh.disabled = true;
-  undoThabh.disabled = false;
-
-  callApi({ action: "thabh", id: searchValue });
-};
-
-undoThabh.onclick = () => {
-  thabh.innerHTML = "—";
-  thabh.classList.remove("status-done");
-
-  doThabh.disabled = false;
-  undoThabh.disabled = true;
-
-  callApi({ action: "cancel_thabh", id: searchValue });
-};
-
-/* الرجوع */
-function goBack() {
-  window.location.href = "index.html";
+/* تحديث البيانات */
+async function refreshData() {
+  await loadData();
 }
 
 /* تحميل أولي */
