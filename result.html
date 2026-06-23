@@ -118,11 +118,19 @@ body::before {
   background: rgba(139, 30, 30, 0.12) !important;
 }
 
-/* حالة الذبح — إطار أحمر دائم */
+/* حالة الذبح — تم الذبح = أحمر */
 .status-zabh {
   color: #d32f2f !important;
   border-color: #d32f2f !important;
   background: rgba(211, 47, 47, 0.12) !important;
+  font-weight: 900;
+}
+
+/* حالة الذبح — لم يتم = برتقالي */
+.status-zabh-pending {
+  color: #e67e22 !important;
+  border-color: #e67e22 !important;
+  background: rgba(230, 126, 34, 0.12) !important;
   font-weight: 900;
 }
 
@@ -220,7 +228,7 @@ body::before {
 
   <div class="card">
     <div class="card-title">🔪 حالة الذبح</div>
-    <div class="status-box status-zabh" id="thabh">لم يتم</div>
+    <div class="status-box" id="thabh">لم يتم</div>
   </div>
 
   <button class="btn btn-secondary" onclick="refreshData()">🔄 تحديث البيانات</button>
@@ -235,7 +243,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const searchValue = urlParams.get("search");
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbwuHW5sYdT04sPLsouvTNUo7kzcCZ17qUmE-xu7eGLpg6FkmhMSM4qcChZjdV6nfJGyTg/exec";
+  "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
 
 function normalizePhone(raw) {
   if (!raw) return "";
@@ -297,9 +305,17 @@ async function loadData() {
     ramiState ? "status-done" : "status-pending"
   );
 
-  const zabh = found["حالة الذبح"] || "";
-  document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
-  document.getElementById("thabh").classList.add("status-zabh");
+  const zabh = (found["حالة الذبح"] || "").toString().trim();
+  const thabhBox = document.getElementById("thabh");
+
+  thabhBox.innerHTML = zabh || "لم يتم";
+  thabhBox.classList.remove("status-zabh", "status-zabh-pending");
+
+  if (zabh === "تم الذبح") {
+    thabhBox.classList.add("status-zabh"); // أحمر
+  } else {
+    thabhBox.classList.add("status-zabh-pending"); // برتقالي
+  }
 
   setButtonsState(tawkeelState, ramiState);
 
