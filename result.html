@@ -49,14 +49,15 @@ body::before {
   object-fit: contain;
 }
 
-/* السطر الذهبي */
+/* اسم الشركة */
 .brand-line {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 900;
   color: #d4af37;
   text-align: center;
   margin-bottom: 25px;
-  text-shadow: 0 0 6px rgba(212,175,55,0.35);
+  text-shadow: 0 0 8px rgba(212,175,55,0.45);
+  letter-spacing: 1px;
 }
 
 /* المحتوى */
@@ -171,7 +172,7 @@ body::before {
   <img src="https://i.imgur.com/qV5bfob.gif">
 </div>
 
-<div class="brand-line">شركة طوى الشرق لحجاج الداخل – 1448 هـ</div>
+<div class="brand-line">شركة طوى الشرق</div>
 
 <div class="container">
 
@@ -231,6 +232,9 @@ const SHEET_URL =
 const API_URL =
   "https://script.google.com/macros/s/AKfycbztL1redTyYlHZSyQgsvICHLAe62IRFHSEM6MDL5NAVcYosFlO1FJgeSea89GzSPy1J/exec";
 
+/* منع الكتابة فوق التغييرات */
+let manualOverride = false;
+
 /* توحيد الجوال */
 function normalizePhone(raw) {
   if (!raw) return "";
@@ -274,8 +278,12 @@ async function loadData() {
   if (!found) return;
 
   document.getElementById("name").innerHTML = found["الاسم"];
-  document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
-  document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
+
+  if (!manualOverride) {
+    document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
+    document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
+  }
+
   document.getElementById("thabh").innerHTML = found["حالة الذبح"] || "—";
 
   loadTawkeelText();
@@ -301,8 +309,9 @@ async function callApi(payload) {
   return await res.text();
 }
 
-/* تناوب الأزرار — النسخة الصحيحة 100٪ */
+/* تناوب الأزرار — مثل النسخة القديمة 100٪ */
 document.getElementById("doTawkeel").onclick = async () => {
+  manualOverride = true;
   await callApi({ action: "tawkeel", id: searchValue });
 
   document.getElementById("tawkeel").innerHTML = "تم التوكيل";
@@ -313,6 +322,7 @@ document.getElementById("doTawkeel").onclick = async () => {
 };
 
 document.getElementById("undoTawkeel").onclick = async () => {
+  manualOverride = true;
   await callApi({ action: "cancel_tawkeel", id: searchValue });
 
   document.getElementById("tawkeel").innerHTML = "—";
@@ -323,6 +333,7 @@ document.getElementById("undoTawkeel").onclick = async () => {
 };
 
 document.getElementById("doRami").onclick = async () => {
+  manualOverride = true;
   await callApi({ action: "rami", id: searchValue });
 
   document.getElementById("rami").innerHTML = "تم الرمي";
@@ -333,6 +344,7 @@ document.getElementById("doRami").onclick = async () => {
 };
 
 document.getElementById("undoRami").onclick = async () => {
+  manualOverride = true;
   await callApi({ action: "cancel_rami", id: searchValue });
 
   document.getElementById("rami").innerHTML = "—";
