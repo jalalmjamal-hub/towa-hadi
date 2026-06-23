@@ -209,11 +209,10 @@ body::before {
 const urlParams = new URLSearchParams(window.location.search);
 const searchValue = urlParams.get("search");
 
-const SHEET_URL =
-  "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
-
 const API_URL =
   "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
+
+const SHEET_URL = API_URL;
 
 function normalizePhone(raw) {
   if (!raw) return "";
@@ -290,10 +289,12 @@ async function loadTawkeelText() {
 }
 
 async function callApi(payload) {
-  fetch(API_URL, {
+  await fetch(API_URL, {
     method: "POST",
     body: JSON.stringify(payload)
   });
+
+  await loadData();
 }
 
 function setButtonsState(tawkeelState, ramiState) {
@@ -305,42 +306,18 @@ function setButtonsState(tawkeelState, ramiState) {
 }
 
 doTawkeel.onclick = () => {
-  tawkeel.innerHTML = "تم التوكيل";
-  tawkeel.classList.add("status-done");
-
-  doTawkeel.disabled = true;
-  undoTawkeel.disabled = false;
-
   callApi({ action: "tawkeel", id: searchValue });
 };
 
 undoTawkeel.onclick = () => {
-  tawkeel.innerHTML = "—";
-  tawkeel.classList.remove("status-done");
-
-  doTawkeel.disabled = false;
-  undoTawkeel.disabled = true;
-
   callApi({ action: "cancel_tawkeel", id: searchValue });
 };
 
 doRami.onclick = () => {
-  rami.innerHTML = "تم الرمي";
-  rami.classList.add("status-done");
-
-  doRami.disabled = true;
-  undoRami.disabled = false;
-
   callApi({ action: "rami", id: searchValue });
 };
 
 undoRami.onclick = () => {
-  rami.innerHTML = "—";
-  rami.classList.remove("status-done");
-
-  doRami.disabled = false;
-  undoRami.disabled = true;
-
   callApi({ action: "cancel_rami", id: searchValue });
 };
 
