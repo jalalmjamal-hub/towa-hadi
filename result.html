@@ -252,30 +252,33 @@ async function loadData() {
 
   if (!found) return;
 
-  document.getElementById("name").innerHTML = found["الاسم"];
+document.getElementById("name").innerHTML = found["الاسم"];
 
-  document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
-  document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
+document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
+document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
 
-  document.getElementById("tawkeel").classList.toggle(
-    "status-done",
-    found["حالة التوكيل"] === "تم التوكيل"
-  );
+const tawkeelState =
+  (found["حالة التوكيل"] || "").toString().trim() === "تم التوكيل";
 
-  document.getElementById("rami").classList.toggle(
-    "status-done",
-    found["حالة الرمي"] === "تم الرمي"
-  );
+const ramiState =
+  (found["حالة الرمي"] || "").toString().trim() === "تم الرمي";
 
-  const zabh = found["حالة الذبح"] || "";
-  document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
+setButtonsState(tawkeelState, ramiState);
 
-  setButtonsState(
-    found["حالة التوكيل"] === "تم التوكيل",
-    found["حالة الرمي"] === "تم الرمي"
-  );
+document.getElementById("tawkeel").classList.toggle(
+  "status-done",
+  tawkeelState
+);
 
-  loadTawkeelText();
+document.getElementById("rami").classList.toggle(
+  "status-done",
+  ramiState
+);
+
+const zabh = found["حالة الذبح"] || "";
+document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
+
+loadTawkeelText();
 }
 
 async function loadTawkeelText() {
