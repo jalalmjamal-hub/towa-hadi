@@ -210,12 +210,10 @@ const urlParams = new URLSearchParams(window.location.search);
 const searchValue = urlParams.get("search");
 
 const SHEET_URL =
-  "https://opensheet.elk.sh/1a816cO4kgLlBUHyu7okjEKcL0DydqqW0wWmAW9gxGME/قاعدة_البيانات";
+  "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbztL1redTyYlHZSyQgsvICHLAe62IRFHSEM6MDL5NAVcYosFlO1FJgeSea89GzSPy1J/exec";
-
-let currentIdOrMobile = "";
+  "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
 
 function normalizePhone(raw) {
   if (!raw) return "";
@@ -254,8 +252,6 @@ async function loadData() {
   });
 
   if (!found) return;
-
-  currentIdOrMobile = searchValue;
 
   document.getElementById("name").innerHTML = found["الاسم"];
 
