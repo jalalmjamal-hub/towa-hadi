@@ -294,7 +294,7 @@ async function callApi(payload) {
     body: JSON.stringify(payload)
   });
 
-  await loadData();
+  await loadData(); // إعادة تحميل البيانات بعد التحديث
 }
 
 function setButtonsState(tawkeelState, ramiState) {
