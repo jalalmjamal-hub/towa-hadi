@@ -89,22 +89,31 @@ body::before {
   margin-bottom: 10px;
 }
 
-.status {
-  font-size: 20px;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 15px;
+/* صندوق الحالة الجديد */
+.status-box {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: inline-block;
+  font-weight: 800;
+  font-size: 18px;
+  border: 2px solid #999;
+  background: rgba(255,255,255,0.15);
   color: #333;
 }
 
+/* حالة منجزة */
 .status-done {
   color: #2e7d32 !important;
-  font-weight: 800 !important;
+  border-color: #2e7d32 !important;
+  background: rgba(46, 125, 50, 0.12) !important;
 }
 
-#thabh {
-  color: #d32f2f !important;
-  font-weight: 800;
+/* حالة غير منجزة */
+.status-pending {
+  color: #8b1e1e !important;
+  border-color: #8b1e1e !important;
+  background: rgba(139, 30, 30, 0.12) !important;
 }
 
 .btn-row {
@@ -139,6 +148,12 @@ body::before {
   margin-top: 10px;
 }
 
+/* شكل الزر عند التعطيل */
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .footer {
   text-align: center;
   color: #d4af37;
@@ -148,13 +163,6 @@ body::before {
   margin-bottom: 20px;
   opacity: 0.9;
 }
-.btn-main:disabled,
-.btn-danger:disabled,
-.btn-secondary:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
 </style>
 </head>
 
@@ -172,17 +180,17 @@ body::before {
 
   <div class="card">
     <div class="card-title">📜 نص التوكيل</div>
-    <div class="status" id="tawkeelText">—</div>
+    <div class="status-box" id="tawkeelText">—</div>
   </div>
 
   <div class="card">
     <div class="card-title">👤 الاسم</div>
-    <div class="status" id="name">—</div>
+    <div class="status-box" id="name">—</div>
   </div>
 
   <div class="card">
     <div class="card-title">📝 التوكيل</div>
-    <div class="status" id="tawkeel">—</div>
+    <div class="status-box" id="tawkeel">—</div>
 
     <div class="btn-row">
       <button id="doTawkeel" class="btn btn-main">✔ تم التوكيل</button>
@@ -192,7 +200,7 @@ body::before {
 
   <div class="card">
     <div class="card-title">🎯 الرمي</div>
-    <div class="status" id="rami">—</div>
+    <div class="status-box" id="rami">—</div>
 
     <div class="btn-row">
       <button id="doRami" class="btn btn-main">✔ تم الرمي</button>
@@ -202,7 +210,7 @@ body::before {
 
   <div class="card">
     <div class="card-title">🔪 حالة الذبح</div>
-    <div class="status" id="thabh">لم يتم</div>
+    <div class="status-box" id="thabh">لم يتم</div>
   </div>
 
   <button class="btn btn-secondary" onclick="refreshData()">🔄 تحديث البيانات</button>
@@ -217,9 +225,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const searchValue = urlParams.get("search");
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbwuHW5sYdT04sPLsouvTNUo7kzcCZ17qUmE-xu7eGLpg6FkmhMSM4qcChZjdV6nfJGyTg/exec";
-
-const SHEET_URL = API_URL;
+  "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
 
 function normalizePhone(raw) {
   if (!raw) return "";
@@ -241,7 +247,7 @@ function goBack() {
 }
 
 async function loadData() {
-  const res = await fetch(SHEET_URL);
+  const res = await fetch(API_URL);
   const rows = await res.json();
 
   const normalizedSearchPhone = normalizePhone(searchValue);
@@ -259,33 +265,34 @@ async function loadData() {
 
   if (!found) return;
 
-document.getElementById("name").innerHTML = found["الاسم"];
+  document.getElementById("name").innerHTML = found["الاسم"];
 
-document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
-document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
+  document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
+  document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
 
-const tawkeelState =
-  (found["حالة التوكيل"] || "").toString().trim() === "تم التوكيل";
+  const tawkeelState =
+    (found["حالة التوكيل"] || "").toString().trim() === "تم التوكيل";
 
-const ramiState =
-  (found["حالة الرمي"] || "").toString().trim() === "تم الرمي";
+  const ramiState =
+    (found["حالة الرمي"] || "").toString().trim() === "تم الرمي";
 
-setButtonsState(tawkeelState, ramiState);
+  document.getElementById("tawkeel").classList.remove("status-done", "status-pending");
+  document.getElementById("rami").classList.remove("status-done", "status-pending");
 
-document.getElementById("tawkeel").classList.toggle(
-  "status-done",
-  tawkeelState
-);
+  document.getElementById("tawkeel").classList.add(
+    tawkeelState ? "status-done" : "status-pending"
+  );
 
-document.getElementById("rami").classList.toggle(
-  "status-done",
-  ramiState
-);
+  document.getElementById("rami").classList.add(
+    ramiState ? "status-done" : "status-pending"
+  );
 
-const zabh = found["حالة الذبح"] || "";
-document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
+  const zabh = found["حالة الذبح"] || "";
+  document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
 
-loadTawkeelText();
+  setButtonsState(tawkeelState, ramiState);
+
+  loadTawkeelText();
 }
 
 async function loadTawkeelText() {
@@ -304,11 +311,11 @@ async function callApi(payload) {
     body: JSON.stringify(payload)
   });
 
-  // 🔥 انتظر الشيت يحدّث فعليًا
   await new Promise(resolve => setTimeout(resolve, 400));
 
   await loadData();
 }
+
 function setButtonsState(tawkeelState, ramiState) {
   document.getElementById("doTawkeel").disabled = tawkeelState;
   document.getElementById("undoTawkeel").disabled = !tawkeelState;
