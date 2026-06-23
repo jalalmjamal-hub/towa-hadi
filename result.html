@@ -87,19 +87,21 @@ body::before {
   font-weight: 800;
   color: #1e2d44;
   margin-bottom: 10px;
+  text-align: center;
 }
 
-/* صندوق الحالة الجديد */
+/* صندوق الحالة */
 .status-box {
-  margin-bottom: 12px;
+  margin: 0 auto 12px auto;
   padding: 10px 14px;
   border-radius: 10px;
-  display: inline-block;
+  display: block;
   font-weight: 800;
   font-size: 18px;
   border: 2px solid #999;
   background: rgba(255,255,255,0.15);
   color: #333;
+  text-align: center;
 }
 
 /* حالة منجزة */
@@ -225,7 +227,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const searchValue = urlParams.get("search");
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbwuHW5sYdT04sPLsouvTNUo7kzcCZ17qUmE-xu7eGLpg6FkmhMSM4qcChZjdV6nfJGyTg/exec";
+  "https://script.google.com/macros/s/AKfycbyQzjE_0WtnuGnMy7B7_8UHjxx8hyDB-mencf9v-yuKCfOslsmFjmq9gYw2xiDs4iLVoQ/exec";
 
 function normalizePhone(raw) {
   if (!raw) return "";
