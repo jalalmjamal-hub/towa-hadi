@@ -358,46 +358,43 @@ function setButtonsState(tawkeelState, ramiState) {
 /* تحديث التوكيل */
 async function updateTawkeel() {
   await callApi({ action: "tawkeel", id: currentIdOrMobile });
-
   document.getElementById("tawkeel").innerHTML = "تم التوكيل";
   document.getElementById("tawkeel").classList.add("status-done");
-
   const ramiState = document.getElementById("rami").innerHTML === "تم الرمي";
   setButtonsState(true, ramiState);
 }
+
 async function undoTawkeel() {
   await callApi({ action: "cancel_tawkeel", id: currentIdOrMobile });
-
   document.getElementById("tawkeel").innerHTML = "—";
   document.getElementById("tawkeel").classList.remove("status-done");
-
   const ramiState = document.getElementById("rami").innerHTML === "تم الرمي";
   setButtonsState(false, ramiState);
 }
+
 /* تحديث الرمي */
 async function updateRami() {
   await callApi({ action: "rami", id: currentIdOrMobile });
-
   document.getElementById("rami").innerHTML = "تم الرمي";
   document.getElementById("rami").classList.add("status-done");
-
   const tawkeelState = document.getElementById("tawkeel").innerHTML === "تم التوكيل";
   setButtonsState(tawkeelState, true);
 }
+
 async function undoRami() {
   await callApi({ action: "cancel_rami", id: currentIdOrMobile });
-
   document.getElementById("rami").innerHTML = "—";
   document.getElementById("rami").classList.remove("status-done");
-
   const tawkeelState = document.getElementById("tawkeel").innerHTML === "تم التوكيل";
   setButtonsState(tawkeelState, false);
 }
+
 /* ربط الأزرار */
 document.getElementById("doTawkeel").onclick = updateTawkeel;
 document.getElementById("undoTawkeel").onclick = undoTawkeel;
 document.getElementById("doRami").onclick = updateRami;
 document.getElementById("undoRami").onclick = undoRami;
+
 /* تحديث البيانات */
 async function refreshData() {
   if (!currentIdOrMobile) return;
