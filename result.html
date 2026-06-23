@@ -18,7 +18,6 @@ body {
   overflow-x: hidden;
 }
 
-/* تأثير النقاط */
 body::before {
   content: "";
   position: fixed;
@@ -31,7 +30,6 @@ body::before {
   z-index: 0;
 }
 
-/* الشعار */
 .logo-box {
   width: 90px;
   height: 90px;
@@ -49,7 +47,6 @@ body::before {
   object-fit: contain;
 }
 
-/* اسم الشركة */
 .brand-line {
   font-size: 28px;
   font-weight: 900;
@@ -60,7 +57,6 @@ body::before {
   letter-spacing: 1px;
 }
 
-/* المحتوى */
 .container {
   position: relative;
   z-index: 2;
@@ -69,7 +65,6 @@ body::before {
   margin: 0 auto 40px auto;
 }
 
-/* العنوان */
 .header-title {
   font-size: 26px;
   font-weight: 800;
@@ -78,7 +73,6 @@ body::before {
   margin-bottom: 25px;
 }
 
-/* بطاقة */
 .card {
   background: #ffffff;
   border-radius: 16px;
@@ -105,15 +99,14 @@ body::before {
 
 .status-done {
   color: #2e7d32 !important;
+  font-weight: 800 !important;
 }
 
-/* حالة الذبح */
 #thabh {
   color: #d32f2f !important;
   font-weight: 800;
 }
 
-/* أزرار */
 .btn-row {
   display: flex;
   gap: 10px;
@@ -135,17 +128,9 @@ body::before {
   color: #1e2d44;
 }
 
-.btn-main:hover {
-  background: #c19c32;
-}
-
 .btn-danger {
   background: #8b1e1e;
   color: #fff;
-}
-
-.btn-danger:hover {
-  background: #6f1616;
 }
 
 .btn-secondary {
@@ -154,11 +139,6 @@ body::before {
   margin-top: 10px;
 }
 
-.btn-secondary:hover {
-  background: #162233;
-}
-
-/* الفوتر */
 .footer {
   text-align: center;
   color: #d4af37;
@@ -167,7 +147,6 @@ body::before {
   margin-top: 40px;
   margin-bottom: 20px;
   opacity: 0.9;
-  text-shadow: 0 0 6px rgba(212,175,55,0.35);
 }
 </style>
 </head>
@@ -227,11 +206,9 @@ body::before {
 <div class="footer">© شركة طوى الشرق لحجاج الداخل – 1448 هـ</div>
 
 <script>
-/* قراءة رقم البحث من الرابط */
 const urlParams = new URLSearchParams(window.location.search);
 const searchValue = urlParams.get("search");
 
-/* روابط النظام */
 const SHEET_URL =
   "https://opensheet.elk.sh/1a816cO4kgLlBUHyu7okjEKcL0DydqqW0wWmAW9gxGME/قاعدة_البيانات";
 
@@ -240,7 +217,6 @@ const API_URL =
 
 let currentIdOrMobile = "";
 
-/* توحيد الجوال */
 function normalizePhone(raw) {
   if (!raw) return "";
   let p = String(raw).trim().replace(/\s+/g, "");
@@ -251,18 +227,15 @@ function normalizePhone(raw) {
   return p;
 }
 
-/* توحيد الهوية */
 function normalizeId(raw) {
   if (!raw) return "";
   return String(raw).trim().replace(/\s+/g, "");
 }
 
-/* الرجوع */
 function goBack() {
   window.location.href = "index.html";
 }
 
-/* تحميل البيانات */
 async function loadData() {
   const res = await fetch(SHEET_URL);
   const rows = await res.json();
@@ -285,21 +258,31 @@ async function loadData() {
   currentIdOrMobile = searchValue;
 
   document.getElementById("name").innerHTML = found["الاسم"];
+
   document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
   document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
 
+  document.getElementById("tawkeel").classList.toggle(
+    "status-done",
+    found["حالة التوكيل"] === "تم التوكيل"
+  );
+
+  document.getElementById("rami").classList.toggle(
+    "status-done",
+    found["حالة الرمي"] === "تم الرمي"
+  );
+
   const zabh = found["حالة الذبح"] || "";
   document.getElementById("thabh").innerHTML = zabh ? zabh : "لم يتم";
-
-  loadTawkeelText();
 
   setButtonsState(
     found["حالة التوكيل"] === "تم التوكيل",
     found["حالة الرمي"] === "تم الرمي"
   );
+
+  loadTawkeelText();
 }
 
-/* تحميل نص التوكيل */
 async function loadTawkeelText() {
   const res = await fetch(API_URL, {
     method: "POST",
@@ -310,7 +293,6 @@ async function loadTawkeelText() {
   document.getElementById("tawkeelText").innerHTML = txt || "—";
 }
 
-/* API */
 async function callApi(payload) {
   fetch(API_URL, {
     method: "POST",
@@ -318,7 +300,6 @@ async function callApi(payload) {
   });
 }
 
-/* تفعيل وتعطيل الأزرار */
 function setButtonsState(tawkeelState, ramiState) {
   document.getElementById("doTawkeel").disabled = tawkeelState;
   document.getElementById("undoTawkeel").disabled = !tawkeelState;
@@ -327,7 +308,6 @@ function setButtonsState(tawkeelState, ramiState) {
   document.getElementById("undoRami").disabled = !ramiState;
 }
 
-/* التوكيل */
 doTawkeel.onclick = () => {
   tawkeel.innerHTML = "تم التوكيل";
   tawkeel.classList.add("status-done");
@@ -348,7 +328,6 @@ undoTawkeel.onclick = () => {
   callApi({ action: "cancel_tawkeel", id: searchValue });
 };
 
-/* الرمي */
 doRami.onclick = () => {
   rami.innerHTML = "تم الرمي";
   rami.classList.add("status-done");
@@ -369,12 +348,10 @@ undoRami.onclick = () => {
   callApi({ action: "cancel_rami", id: searchValue });
 };
 
-/* تحديث البيانات */
 async function refreshData() {
   await loadData();
 }
 
-/* تحميل أولي */
 loadData();
 </script>
 
