@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>بيانات الحاج – نظام الهدي</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Tajawal', sans-serif;
+  background: linear-gradient(135deg, #1e2d44 60%, #26354d);
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* تأثير النقاط */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 0 0, rgba(255,255,255,0.07) 0, rgba(255,255,255,0.07) 2px, transparent 2px),
+    radial-gradient(circle at 20px 20px, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 2px, transparent 2px);
+  background-size: 40px 40px;
+  opacity: 0.35;
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 2;
+  width: 92%;
+  max-width: 450px;
+  margin: 40px auto;
+}
+
+/* العنوان */
+.header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.header-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #d4af37;
+}
+
+/* بطاقة */
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 22px;
+  border: 2px solid #d4af37;
+  margin-bottom: 18px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e2d44;
+  margin-bottom: 10px;
+}
+
+.status {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.status-done {
+  color: #2e7d32 !important;
+}
+
+/* أزرار */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-main {
+  background: #d4af37;
+  color: #1e2d44;
+}
+
+.btn-main:hover {
+  background: #c19c32;
+}
+
+.btn-danger {
+  background: #8b1e1e;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #6f1616;
+}
+
+.btn-secondary {
+  background: #1e2d44;
+  color: #fff;
+  margin-top: 10px;
+}
+
+.btn-secondary:hover {
+  background: #162233;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-title">بيانات الحاج</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👤 الاسم</div>
+    <div class="status" id="name">—</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📜 نص التوكيل</div>
+    <div class="status" id="tawkeelText">—</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 التوكيل</div>
+    <div class="status" id="tawkeel">—</div>
+
+    <div class="btn-row">
+      <button id="doTawkeel" class="btn btn-main">✔ تم التوكيل</button>
+      <button id="undoTawkeel" class="btn btn-danger">🔄 إلغاء</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎯 الرمي</div>
+    <div class="status" id="rami">—</div>
+
+    <div class="btn-row">
+      <button id="doRami" class="btn btn-main">✔ تم الرمي</button>
+      <button id="undoRami" class="btn btn-danger">🔄 إلغاء</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔪 الذبح</div>
+    <div class="status" id="thabh">—</div>
+  </div>
+
+  <button class="btn btn-secondary" onclick="refreshData()">🔄 تحديث البيانات</button>
+  <button class="btn btn-secondary" onclick="goBack()">⬅ رجوع</button>
+
+</div>
+
+<script>
+/* قراءة رقم البحث من الرابط */
+const urlParams = new URLSearchParams(window.location.search);
+const searchValue = urlParams.get("search");
+
+/* روابط النظام */
+const SHEET_URL =
+  "https://opensheet.elk.sh/1a816cO4kgLlBUHyu7okjEKcL0DydqqW0wWmAW9gxGME/قاعدة_البيانات";
+
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbztL1redTyYlHZSyQgsvICHLAe62IRFHSEM6MDL5NAVcYosFlO1FJgeSea89GzSPy1J/exec";
+
+/* توحيد الجوال */
+function normalizePhone(raw) {
+  if (!raw) return "";
+  let p = String(raw).trim().replace(/\s+/g, "");
+  if (p.startsWith("+966")) p = p.substring(4);
+  else if (p.startsWith("00966")) p = p.substring(5);
+  if (p.startsWith("05")) p = p.substring(1);
+  else if (p.startsWith("0") && p.length >= 9) p = p.substring(1);
+  return p;
+}
+
+/* توحيد الهوية */
+function normalizeId(raw) {
+  if (!raw) return "";
+  return String(raw).trim().replace(/\s+/g, "");
+}
+
+/* الرجوع */
+function goBack() {
+  window.location.href = "index.html";
+}
+
+/* تحميل البيانات */
+async function loadData() {
+  const res = await fetch(SHEET_URL);
+  const rows = await res.json();
+
+  const normalizedSearchPhone = normalizePhone(searchValue);
+  const normalizedSearchId = normalizeId(searchValue);
+
+  let found = rows.find(row => {
+    const id = normalizeId(row["رقم الهوية"]);
+    const mobileNorm = normalizePhone(row["رقم الجوال"]);
+    return (
+      id === normalizedSearchId ||
+      mobileNorm === normalizedSearchPhone ||
+      mobileNorm.endsWith(normalizedSearchPhone)
+    );
+  });
+
+  if (!found) return;
+
+  document.getElementById("name").innerHTML = found["الاسم"];
+  document.getElementById("tawkeel").innerHTML = found["حالة التوكيل"] || "—";
+  document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
+  document.getElementById("thabh").innerHTML = found["حالة الذبح"] || "—";
+
+  setButtonsState(
+    found["حالة التوكيل"] === "تم التوكيل",
+    found["حالة الرمي"] === "تم الرمي"
+  );
+
+  loadTawkeelText();
+}
+
+/* تحميل نص التوكيل */
+async function loadTawkeelText() {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({ action: "get_tawkeel_text" })
+  });
+
+  const txt = await res.text();
+  document.getElementById("tawkeelText").innerHTML = txt || "—";
+}
+
+/* تناوب الأزرار */
+function setButtonsState(tawkeelState, ramiState) {
+  document.getElementById("doTawkeel").disabled = tawkeelState;
+  document.getElementById("undoTawkeel").disabled = !tawkeelState;
+
+  document.getElementById("doRami").disabled = ramiState;
+  document.getElementById("undoRami").disabled = !ramiState;
+}
+
+/* API */
+async function callApi(payload) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  return await res.text();
+}
+
+/* تحديث التوكيل */
+document.getElementById("doTawkeel").onclick = async () => {
+  await callApi({ action: "tawkeel", id: searchValue });
+  await refreshData();
+};
+
+document.getElementById("undoTawkeel").onclick = async () => {
+  await callApi({ action: "cancel_tawkeel", id: searchValue });
+  await refreshData();
+};
+
+/* تحديث الرمي */
+document.getElementById("doRami").onclick = async () => {
+  await callApi({ action: "rami", id: searchValue });
+  await refreshData();
+};
+
+document.getElementById("undoRami").onclick = async () => {
+  await callApi({ action: "cancel_rami", id: searchValue });
+  await refreshData();
+};
+
+/* تحديث البيانات */
+async function refreshData() {
+  await loadData();
+}
+
+/* تحميل أولي */
+loadData();
+</script>
+
+</body>
+</html>
