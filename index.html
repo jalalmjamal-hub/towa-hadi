@@ -255,80 +255,6 @@ body::before {
   cursor: pointer;
   font-size: 16px;
 }
-
-/* نسخة الكمبيوتر */
-@media (min-width: 900px) {
-  .main-card {
-    max-width: 900px;
-    padding: 40px 50px;
-  }
-
-  #loginSection input,
-  #loginSection button {
-    width: 60%;
-    font-size: 20px;
-  }
-
-  .company-title {
-    font-size: 28px;
-  }
-
-  .company-subtitle {
-    font-size: 18px;
-  }
-
-  .info-card {
-    padding: 22px;
-  }
-
-  .status {
-    font-size: 20px;
-  }
-
-  .action-btn {
-    font-size: 17px;
-    padding: 14px 20px;
-  }
-}
-
-/* نسخة الجوال */
-@media (max-width: 600px) {
-  html {
-    font-size: 18px;
-  }
-
-  body {
-    padding-top: 24px;
-  }
-
-  .main-card {
-    max-width: 480px;
-  }
-
-  #loginSection input,
-  #loginSection button {
-    font-size: 18px;
-    padding: 15px;
-  }
-
-  .company-title {
-    font-size: 24px;
-  }
-
-  .company-subtitle {
-    font-size: 15px;
-  }
-}
-
-.action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-#thabh {
-  color: #d32f2f !important;
-  font-weight: 800;
-}
 </style>
 </head>
 
@@ -357,7 +283,7 @@ body::before {
     <div id="loginError">⚠️ الرقم غير موجود في النظام</div>
   </div>
 
-  <!-- صفحة بيانات الحاج (بعد الترتيب) -->
+  <!-- صفحة بيانات الحاج -->
   <div id="resultSection" class="card-section hidden">
 
     <div class="result-title">بيانات الحاج</div>
@@ -409,8 +335,308 @@ body::before {
 </div>
 
 <script>
-/* نفس كودك السابق بالكامل بدون أي تغيير */
-</script>
+/* ================================
+   JavaScript — نسخة محسّنة A3
+   ================================ */
 
+/* روابط النظام */
+const SHEET_URL =
+  "https://opensheet.elk.sh/1a816cO4kgLlBUHyu7okjEKcL0DydqqW0wWmAW9gxGME/قاعدة_البيانات";
+
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbztL1redTyYlHZSyQgsvICHLAe62IRFHSEM6MDL5NAVcYosFlO1FJgeSea89GzSPy1J/exec";
+
+let currentIdOrMobile = "";
+let isProcessing = false; // حماية من الضغط المزدوج
+/* ================================
+   أدوات مساعدة
+================================ */
+
+/* توحيد صيغة الجوال */
+function normalizePhone(raw) {
+  if (!raw) return "";
+  let p = String(raw).trim().replace(/\s+/g, "");
+
+  if (p.startsWith("+966")) p = p.substring(4);
+  else if (p.startsWith("00966")) p = p.substring(5);
+
+  if (p.startsWith("05")) p = p.substring(1);
+  else if (p.startsWith("0") && p.length >= 9) p = p.substring(1);
+
+  return p;
+}
+
+/* توحيد الهوية */
+function normalizeId(raw) {
+  if (!raw) return "";
+  return String(raw).trim().replace(/\s+/g, "");
+}
+
+/* حماية من الضغط المزدوج */
+function lockButtons() {
+  isProcessing = true;
+  document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+}
+
+function unlockButtons() {
+  isProcessing = false;
+  document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+}
+
+/* ================================
+   الانتقال بين الصفحات
+================================ */
+
+function goBack() {
+  document.getElementById("resultSection").classList.add("hidden");
+  document.getElementById("resultSection").classList.remove("visible");
+
+  document.getElementById("loginSection").classList.remove("hidden");
+  document.getElementById("loginSection").classList.add("visible");
+}
+
+function slideToResult() {
+  document.getElementById("loginSection").classList.add("hidden");
+  document.getElementById("loginSection").classList.remove("visible");
+
+  document.getElementById("resultSection").classList.remove("hidden");
+  document.getElementById("resultSection").classList.add("visible");
+}
+
+/* ================================
+   البحث
+================================ */
+
+document.getElementById("loginInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    startSearch();
+  }
+});
+
+function startSearch() {
+  if (isProcessing) return;
+  const val = document.getElementById("loginInput").value.trim();
+  if (!val) return;
+
+  document.getElementById("loginError").style.display = "none";
+  document.getElementById("loader").style.display = "block";
+
+  searchFromSheet(val);
+}
+
+async function searchFromSheet(input) {
+  try {
+    const res = await fetch(SHEET_URL);
+    const rows = await res.json();
+
+    document.getElementById("loader").style.display = "none";
+
+    const searchVal = String(input).trim();
+    const normalizedSearchPhone = normalizePhone(searchVal);
+    const normalizedSearchId = normalizeId(searchVal);
+
+    let found = rows.find(row => {
+      const id = normalizeId(row["رقم الهوية"]);
+      const mobileNorm = normalizePhone(row["رقم الجوال"]);
+      return (
+        id === normalizedSearchId ||
+        mobileNorm === normalizedSearchPhone ||
+        mobileNorm.endsWith(normalizedSearchPhone)
+      );
+    });
+
+    if (!found) {
+      document.getElementById("loginError").style.display = "block";
+      return;
+    }
+
+    currentIdOrMobile = searchVal;
+
+    fillResult(found);
+    slideToResult();
+    await loadTawkeelText();
+
+  } catch (err) {
+    console.log("ERROR searchFromSheet:", err);
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("loginError").style.display = "block";
+  }
+}
+
+/* ================================
+   تعبئة البيانات
+================================ */
+
+function fillResult(row) {
+  document.getElementById("name").innerHTML = row["الاسم"] || "—";
+
+  const tawkeel = row["حالة التوكيل"] || "";
+  const rami = row["حالة الرمي"] || "";
+  const zabh = row["حالة الذبح"] || "";
+
+  const t = document.getElementById("tawkeel");
+  t.innerHTML = tawkeel || "—";
+  t.classList.toggle("status-done", tawkeel === "تم التوكيل");
+
+  const r = document.getElementById("rami");
+  r.innerHTML = rami || "—";
+  r.classList.toggle("status-done", rami === "تم الرمي");
+
+  document.getElementById("thabh").innerHTML = zabh || "—";
+
+  setButtonsState(tawkeel === "تم التوكيل", rami === "تم الرمي");
+}
+
+/* ================================
+   API
+================================ */
+
+async function callApi(payload) {
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch (e) {
+    console.log("API ERROR:", e);
+    return null;
+  }
+}
+
+async function loadTawkeelText() {
+  try {
+    const txt = await callApi({ action: "get_tawkeel_text" });
+    document.getElementById("tawkeelText").innerHTML = txt || "—";
+  } catch {
+    document.getElementById("tawkeelText").innerHTML = "—";
+  }
+}
+
+/* ================================
+   تفعيل وتعطيل الأزرار
+================================ */
+
+function setButtonsState(tawkeelState, ramiState) {
+  document.getElementById("doTawkeel").disabled = tawkeelState;
+  document.getElementById("undoTawkeel").disabled = !tawkeelState;
+
+  document.getElementById("doRami").disabled = ramiState;
+  document.getElementById("undoRami").disabled = !ramiState;
+}
+
+/* ================================
+   تحديث الحالات
+================================ */
+
+async function updateTawkeel() {
+  if (!currentIdOrMobile || isProcessing) return;
+  lockButtons();
+
+  await callApi({ action: "tawkeel", id: currentIdOrMobile });
+
+  document.getElementById("tawkeel").innerHTML = "تم التوكيل";
+  document.getElementById("tawkeel").classList.add("status-done");
+
+  const ramiState = document.getElementById("rami").innerHTML === "تم الرمي";
+  setButtonsState(true, ramiState);
+
+  unlockButtons();
+}
+
+async function undoTawkeel() {
+  if (!currentIdOrMobile || isProcessing) return;
+  lockButtons();
+
+  await callApi({ action: "cancel_tawkeel", id: currentIdOrMobile });
+
+  document.getElementById("tawkeel").innerHTML = "—";
+  document.getElementById("tawkeel").classList.remove("status-done");
+
+  const ramiState = document.getElementById("rami").innerHTML === "تم الرمي";
+  setButtonsState(false, ramiState);
+
+  unlockButtons();
+}
+
+async function updateRami() {
+  if (!currentIdOrMobile || isProcessing) return;
+  lockButtons();
+
+  await callApi({ action: "rami", id: currentIdOrMobile });
+
+  document.getElementById("rami").innerHTML = "تم الرمي";
+  document.getElementById("rami").classList.add("status-done");
+
+  const tawkeelState = document.getElementById("tawkeel").innerHTML === "تم التوكيل";
+  setButtonsState(tawkeelState, true);
+
+  unlockButtons();
+}
+
+async function undoRami() {
+  if (!currentIdOrMobile || isProcessing) return;
+  lockButtons();
+
+  await callApi({ action: "cancel_rami", id: currentIdOrMobile });
+
+  document.getElementById("rami").innerHTML = "—";
+  document.getElementById("rami").classList.remove("status-done");
+
+  const tawkeelState = document.getElementById("tawkeel").innerHTML === "تم التوكيل";
+  setButtonsState(tawkeelState, false);
+
+  unlockButtons();
+}
+
+/* ربط الأزرار */
+document.getElementById("doTawkeel").onclick = updateTawkeel;
+document.getElementById("undoTawkeel").onclick = undoTawkeel;
+document.getElementById("doRami").onclick = updateRami;
+document.getElementById("undoRami").onclick = undoRami;
+
+/* ================================
+   تحديث البيانات
+================================ */
+
+async function refreshData() {
+  if (!currentIdOrMobile) return;
+
+  document.getElementById("tawkeel").innerHTML = "…";
+  document.getElementById("rami").innerHTML = "…";
+  document.getElementById("thabh").innerHTML = "…";
+
+  try {
+    const res = await fetch(SHEET_URL);
+    const rows = await res.json();
+
+    const searchVal = currentIdOrMobile.trim();
+    const normalizedSearchPhone = normalizePhone(searchVal);
+    const normalizedSearchId = normalizeId(searchVal);
+
+    let found = rows.find(row => {
+      const id = normalizeId(row["رقم الهوية"]);
+      const mobileNorm = normalizePhone(row["رقم الجوال"]);
+      return (
+        id === normalizedSearchId ||
+        mobileNorm === normalizedSearchPhone ||
+        mobileNorm.endsWith(normalizedSearchPhone)
+      );
+    });
+
+    if (!found) return;
+
+    fillResult(found);
+    await loadTawkeelText();
+
+  } catch (e) {
+    console.log("refresh error:", e);
+  }
+}
+
+</script>
 </body>
 </html>
