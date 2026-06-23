@@ -373,16 +373,14 @@ function normalizeId(raw) {
 }
 
 /* حماية من الضغط المزدوج */
-function lockButtons() {
+function lockButtons(btn) {
   isProcessing = true;
-  document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+  btn.disabled = true; // تعطيل الزر الذي تم الضغط عليه فقط
 }
 
 function unlockButtons() {
   isProcessing = false;
-  document.querySelectorAll("button").forEach(btn => btn.disabled = false);
 }
-
 /* ================================
    الانتقال بين الصفحات
 ================================ */
@@ -534,7 +532,9 @@ function setButtonsState(tawkeelState, ramiState) {
 
 async function updateTawkeel() {
   if (!currentIdOrMobile || isProcessing) return;
-  lockButtons();
+
+  const btn = document.getElementById("doTawkeel");
+  lockButtons(btn);
 
   await callApi({ action: "tawkeel", id: currentIdOrMobile });
 
@@ -546,10 +546,11 @@ async function updateTawkeel() {
 
   unlockButtons();
 }
-
 async function undoTawkeel() {
   if (!currentIdOrMobile || isProcessing) return;
-  lockButtons();
+
+  const btn = document.getElementById("undoTawkeel");
+  lockButtons(btn);
 
   await callApi({ action: "cancel_tawkeel", id: currentIdOrMobile });
 
@@ -561,7 +562,6 @@ async function undoTawkeel() {
 
   unlockButtons();
 }
-
 async function updateRami() {
   if (!currentIdOrMobile || isProcessing) return;
   lockButtons();
