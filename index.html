@@ -206,7 +206,7 @@ body::before {
 
 <script>
 /* ================================
-   JavaScript — نسخة محسّنة
+   JavaScript — النسخة النهائية
 ================================ */
 
 const SHEET_URL =
@@ -358,35 +358,25 @@ function setButtonsState(tawkeelState, ramiState) {
 /* تحديث التوكيل */
 async function updateTawkeel() {
   await callApi({ action: "tawkeel", id: currentIdOrMobile });
-  document.getElementById("tawkeel").innerHTML = "تم التوكيل";
-  document.getElementById("tawkeel").classList.add("status-done");
-  const ramiState = document.getElementById("rami").innerHTML === "تم الرمي";
-  setButtonsState(true, ramiState);
+  await refreshData();
 }
 
+/* إلغاء التوكيل */
 async function undoTawkeel() {
   await callApi({ action: "cancel_tawkeel", id: currentIdOrMobile });
-  document.getElementById("tawkeel").innerHTML = "—";
-  document.getElementById("tawkeel").classList.remove("status-done");
-  const ramiState = document.getElementById("rami").innerHTML === "تم الرمي";
-  setButtonsState(false, ramiState);
+  await refreshData();
 }
 
 /* تحديث الرمي */
 async function updateRami() {
   await callApi({ action: "rami", id: currentIdOrMobile });
-  document.getElementById("rami").innerHTML = "تم الرمي";
-  document.getElementById("rami").classList.add("status-done");
-  const tawkeelState = document.getElementById("tawkeel").innerHTML === "تم التوكيل";
-  setButtonsState(tawkeelState, true);
+  await refreshData();
 }
 
+/* إلغاء الرمي */
 async function undoRami() {
   await callApi({ action: "cancel_rami", id: currentIdOrMobile });
-  document.getElementById("rami").innerHTML = "—";
-  document.getElementById("rami").classList.remove("status-done");
-  const tawkeelState = document.getElementById("tawkeel").innerHTML === "تم التوكيل";
-  setButtonsState(tawkeelState, false);
+  await refreshData();
 }
 
 /* ربط الأزرار */
@@ -398,10 +388,6 @@ document.getElementById("undoRami").onclick = undoRami;
 /* تحديث البيانات */
 async function refreshData() {
   if (!currentIdOrMobile) return;
-
-  document.getElementById("tawkeel").innerHTML = "…";
-  document.getElementById("rami").innerHTML = "…";
-  document.getElementById("thabh").innerHTML = "…";
 
   try {
     const res = await fetch(SHEET_URL);
