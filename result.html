@@ -31,24 +31,50 @@ body::before {
   z-index: 0;
 }
 
+/* الشعار */
+.logo-box {
+  width: 90px;
+  height: 90px;
+  background: #fff;
+  border-radius: 14px;
+  border: 3px solid #d4af37;
+  padding: 6px;
+  margin: 25px auto 10px auto;
+  box-shadow: 0 0 12px rgba(0,0,0,0.25);
+}
+
+.logo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* السطر الذهبي */
+.brand-line {
+  font-size: 18px;
+  font-weight: 800;
+  color: #d4af37;
+  text-align: center;
+  margin-bottom: 25px;
+  text-shadow: 0 0 6px rgba(212,175,55,0.35);
+}
+
+/* المحتوى */
 .container {
   position: relative;
   z-index: 2;
   width: 92%;
   max-width: 450px;
-  margin: 40px auto;
+  margin: 0 auto 40px auto;
 }
 
 /* العنوان */
-.header {
-  text-align: center;
-  margin-bottom: 25px;
-}
-
 .header-title {
   font-size: 26px;
   font-weight: 800;
   color: #d4af37;
+  text-align: center;
+  margin-bottom: 25px;
 }
 
 /* بطاقة */
@@ -124,16 +150,32 @@ body::before {
 .btn-secondary:hover {
   background: #162233;
 }
+
+/* الفوتر */
+.footer {
+  text-align: center;
+  color: #d4af37;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  opacity: 0.9;
+  text-shadow: 0 0 6px rgba(212,175,55,0.35);
+}
 </style>
 </head>
 
 <body>
 
+<div class="logo-box">
+  <img src="https://i.imgur.com/qV5bfob.gif">
+</div>
+
+<div class="brand-line">شركة طوى الشرق لحجاج الداخل – 1448 هـ</div>
+
 <div class="container">
 
-  <div class="header">
-    <div class="header-title">بيانات الحاج</div>
-  </div>
+  <div class="header-title">بيانات الحاج</div>
 
   <div class="card">
     <div class="card-title">👤 الاسم</div>
@@ -174,6 +216,8 @@ body::before {
   <button class="btn btn-secondary" onclick="goBack()">⬅ رجوع</button>
 
 </div>
+
+<div class="footer">© شركة طوى الشرق لحجاج الداخل – 1448 هـ</div>
 
 <script>
 /* قراءة رقم البحث من الرابط */
@@ -234,11 +278,6 @@ async function loadData() {
   document.getElementById("rami").innerHTML = found["حالة الرمي"] || "—";
   document.getElementById("thabh").innerHTML = found["حالة الذبح"] || "—";
 
-  setButtonsState(
-    found["حالة التوكيل"] === "تم التوكيل",
-    found["حالة الرمي"] === "تم الرمي"
-  );
-
   loadTawkeelText();
 }
 
@@ -253,15 +292,6 @@ async function loadTawkeelText() {
   document.getElementById("tawkeelText").innerHTML = txt || "—";
 }
 
-/* تناوب الأزرار */
-function setButtonsState(tawkeelState, ramiState) {
-  document.getElementById("doTawkeel").disabled = tawkeelState;
-  document.getElementById("undoTawkeel").disabled = !tawkeelState;
-
-  document.getElementById("doRami").disabled = ramiState;
-  document.getElementById("undoRami").disabled = !ramiState;
-}
-
 /* API */
 async function callApi(payload) {
   const res = await fetch(API_URL, {
@@ -271,26 +301,45 @@ async function callApi(payload) {
   return await res.text();
 }
 
-/* تحديث التوكيل */
+/* تناوب الأزرار — النسخة الصحيحة 100٪ */
 document.getElementById("doTawkeel").onclick = async () => {
   await callApi({ action: "tawkeel", id: searchValue });
-  await refreshData();
+
+  document.getElementById("tawkeel").innerHTML = "تم التوكيل";
+  document.getElementById("tawkeel").classList.add("status-done");
+
+  document.getElementById("doTawkeel").disabled = true;
+  document.getElementById("undoTawkeel").disabled = false;
 };
 
 document.getElementById("undoTawkeel").onclick = async () => {
   await callApi({ action: "cancel_tawkeel", id: searchValue });
-  await refreshData();
+
+  document.getElementById("tawkeel").innerHTML = "—";
+  document.getElementById("tawkeel").classList.remove("status-done");
+
+  document.getElementById("doTawkeel").disabled = false;
+  document.getElementById("undoTawkeel").disabled = true;
 };
 
-/* تحديث الرمي */
 document.getElementById("doRami").onclick = async () => {
   await callApi({ action: "rami", id: searchValue });
-  await refreshData();
+
+  document.getElementById("rami").innerHTML = "تم الرمي";
+  document.getElementById("rami").classList.add("status-done");
+
+  document.getElementById("doRami").disabled = true;
+  document.getElementById("undoRami").disabled = false;
 };
 
 document.getElementById("undoRami").onclick = async () => {
   await callApi({ action: "cancel_rami", id: searchValue });
-  await refreshData();
+
+  document.getElementById("rami").innerHTML = "—";
+  document.getElementById("rami").classList.remove("status-done");
+
+  document.getElementById("doRami").disabled = false;
+  document.getElementById("undoRami").disabled = true;
 };
 
 /* تحديث البيانات */
