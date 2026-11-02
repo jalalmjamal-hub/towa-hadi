@@ -1,0 +1,1348 @@
+<style>
+/* ============================
+   Root Variables
+============================ */
+:root {
+  --primary: #0d47a1;
+  --primary-light: #1565c0;
+  --primary-dark: #08306b;
+
+  --success: #2e7d32;
+  --success-light: #66bb6a;
+  --success-bg: #d9f2dd;
+
+  --warning: #ffca28;
+  --warning-dark: #c79a00;
+
+  --danger: #c62828;
+  --danger-light: #ef5350;
+  --danger-bg: #ffebee;
+
+  --gray-100: #f8faff;
+  --gray-200: #eef3ff;
+  --gray-300: #d0d8f0;
+  --gray-400: #bfc7dd;
+  --gray-500: #777;
+  --gray-900: #1a1a1a;
+
+  --text-main: #0a1f44;
+  --text-light: #555;
+
+  --card-bg: #ffffff;
+  --page-bg: #f4f6fa;
+}
+
+/* ============================
+   Global Body
+============================ */
+body {
+  margin: 0;
+  font-family: 'Tajawal', sans-serif;
+  background: var(--page-bg);
+}
+
+/* ============================
+   Global Buttons (Base Style)
+============================ */
+button {
+  font-weight: 700 !important;
+  cursor: pointer;
+  border: none;
+  transition: 0.25s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+/* زر غير فعّال */
+button:disabled {
+  opacity: 0.30 !important;
+  filter: grayscale(100%);
+  cursor: default !important;
+  pointer-events: none;
+  transform: scale(0.97);
+}
+
+/* ============================
+   Filter Buttons
+============================ */
+.filter-btn {
+  background: #e3e9ff;
+  border: 1px solid #b6c2ff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.filter-btn:hover {
+  background: #d0dbff;
+}
+
+.filter-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ============================
+   Undo Button (General)
+============================ */
+.undo-btn {
+  background: #b71c1c !important;
+  color: white !important;
+  padding: 7px 14px;
+  border-radius: 6px;
+}
+
+.undo-btn:hover {
+  background: #7f0000 !important;
+}
+/* ============================
+   Sidebar
+============================ */
+.sidebar {
+  width: 270px;
+  background: linear-gradient(180deg, var(--primary-dark), var(--primary));
+  color: white;
+  height: 100vh;
+  padding-top: 20px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  box-shadow: -4px 0 12px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  z-index: 998;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  margin-bottom: 10px;
+}
+
+.logo-image img {
+  width: 55px;
+  height: 55px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: white;
+  padding: 4px;
+  border: 2px solid var(--warning);
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+  margin-left: 10px;
+}
+
+.header-logo-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  width: 75px;
+  height: 75px;
+  object-fit: contain;
+  background: white;
+  padding: 4px;
+  border-radius: 10px;
+  border: 2px solid var(--warning);
+  box-shadow: 0 0 8px rgba(0,0,0,0.25);
+}
+
+.sidebar-title .title-main {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sidebar-title .title-sub {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* ============================
+   Sidebar Menu Items
+============================ */
+.menu-item {
+  padding: 14px 22px;
+  cursor: pointer;
+  font-size: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  transition: 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-item:hover {
+  background: rgba(255,255,255,0.18);
+  padding-right: 28px;
+}
+
+.menu-item.active {
+  background: rgba(255,255,255,0.25);
+  font-weight: 700;
+  border-right: 4px solid var(--warning);
+}
+
+.menu-icon {
+  font-size: 20px;
+}
+
+/* ============================
+   Top Header
+============================ */
+.top-header {
+  position: fixed;
+  top: 0;
+  right: 270px;
+  left: 0;
+  height: 95px;
+  padding: 15px 25px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  z-index: 999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.top-left .company-name {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.top-left .system-name {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.top-right .badge {
+  background: rgba(255,255,255,0.15);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* ============================
+   Content Wrapper
+============================ */
+.content {
+  margin-right: 270px;
+  padding: 25px;
+  width: calc(100% - 270px);
+  margin-top: 120px;
+}
+/* ============================
+   Cards
+============================ */
+.card {
+  background: #ffffff;
+  padding: 25px 26px;
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  margin-bottom: 22px;
+  transition: 0.25s ease;
+  animation: fadeInUp 0.6s ease;
+}
+
+.card:hover {
+  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+.card-header {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: #777;
+  margin-top: 4px;
+}
+
+/* ============================
+   Dashboard Cards
+============================ */
+.dashboard-card {
+  background: radial-gradient(circle at top left, #ffffff 0%, #f5f7ff 45%, #eef2ff 100%);
+}
+
+/* ============================
+   Dashboard Grid
+============================ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ============================
+   Stat Cards
+============================ */
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+}
+
+.stat-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* ألوان الشرائط السفلية */
+.stat-total::after { background: #0d47a1; }
+.stat-tawkeel::after { background: #1976d2; }
+.stat-rami::after { background: #0288d1; }
+.stat-thabh::after { background: #2e7d32; }
+.stat-pending::after { background: #c62828; }
+
+/* ============================
+   Progress Section
+============================ */
+.dashboard-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.progress-section {
+  flex: 1 1 260px;
+}
+
+.progress-title {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.progress-bg {
+  background: #e0e3ef;
+  border-radius: 10px;
+  height: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #2e7d32, #66bb6a);
+  height: 100%;
+  width: 0%;
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+
+.progress-label {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #333;
+}
+
+/* ============================
+   Mini Stats
+============================ */
+.mini-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mini-stat {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  min-width: 120px;
+}
+
+.mini-label {
+  font-size: 12px;
+  color: #555;
+}
+
+.mini-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ============================
+   Raw Stats Box
+============================ */
+.stats-raw-box {
+  margin-top: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8f9ff;
+  border: 1px solid #d0d4e4;
+  font-size: 14px;
+}
+/* ============================
+   Global Table Styling
+============================ */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.table thead tr {
+  background: var(--primary);
+  color: white;
+}
+
+.table thead th {
+  padding: 12px 10px;
+  font-weight: 600;
+  font-size: 14px;
+  border-left: 1px solid rgba(255,255,255,0.15);
+}
+
+.table tbody tr {
+  transition: 0.2s ease;
+  animation: fadeRow 0.4s ease;
+}
+
+.table tbody tr:hover {
+  background: #e8f0ff !important;
+}
+
+.table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+/* صف مكتمل */
+.table tbody tr.done {
+  background: var(--success-bg) !important;
+  font-weight: 700;
+  color: #1b5e20;
+}
+
+/* أزرار داخل الجداول العامة */
+.table tbody td button {
+  background: var(--success);
+  color: white;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+  font-size: 13px;
+}
+
+.table tbody td button:hover {
+  background: #1b5e20;
+}
+/* ============================
+   Slaughter Toolbar
+============================ */
+.slaughter-toolbar {
+  background: #eef3ff;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #d0d8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#slaughterSearch {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #bfc7dd;
+  width: 220px;
+}
+
+/* ============================
+   Slaughter Table — Rows
+============================ */
+#slaughterTable tbody tr:nth-child(even) {
+  background: #f4f7ff;
+}
+
+#slaughterTable tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+#slaughterTable tbody tr.done {
+  background: #d9f2dd !important;
+  font-weight: 700;
+  color: #1b5e20;
+}
+
+/* ============================
+   Slaughter Table — Header
+============================ */
+#slaughterTable thead tr {
+  background: linear-gradient(90deg, #0d47a1, #1565c0) !important;
+}
+
+#slaughterTable thead th {
+  color: #fff !important;
+  font-family: 'Tajawal', sans-serif !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  padding: 14px 10px !important;
+  text-align: center !important;
+  border: none !important;
+  letter-spacing: 0.3px;
+}
+
+/* ============================
+   Select Column (✓)
+============================ */
+#slaughterTable thead th.select-col {
+  color: transparent !important;
+  width: 45px !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
+  padding: 0 !important;
+  position: relative;
+}
+
+#slaughterTable thead th.select-col::after {
+  content: "✓";
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: #0d47a1;
+  border: 2px solid #fff;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#slaughterTable tbody td.select-col {
+  width: 45px !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+/* ============================
+   Slaughter Table — Body Cells
+============================ */
+#slaughterTable tbody td {
+  font-family: 'Tajawal', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #000 !important;
+  padding: 10px 8px !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  line-height: 1.6 !important;
+}
+
+/* ============================
+   Slaughter Table — Layout
+============================ */
+#slaughterTable {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: table !important;
+  border: 1px solid #ccc !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+#slaughterTable td,
+#slaughterTable th {
+  border-right: 1px solid #e5e5e5 !important;
+}
+
+#slaughterTable tbody tr {
+  border-bottom: 1px solid #e5e5e5 !important;
+}
+
+#slaughterTable tbody tr:hover {
+  background-color: #f9fbff !important;
+}
+
+/* ============================
+   Slaughter Table — Buttons
+============================ */
+#slaughterTable td button {
+  padding: 7px 14px !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  margin: 6px !important;
+}
+
+/* ذبح */
+.slaughter-btn {
+  background: #2e7d32;
+  color: #fff;
+}
+.slaughter-btn:hover {
+  background: #1b5e20;
+  transform: translateY(-2px);
+}
+
+/* إلغاء */
+.undo-btn {
+  background: #c62828 !important;
+  color: #fff !important;
+}
+.undo-btn:hover {
+  background: #8e0000 !important;
+  transform: translateY(-2px);
+}
+
+/* ============================
+   Bulk Action Buttons
+============================ */
+.bulk-btn {
+  background: #1e7e34 !important;
+  color: #fff !important;
+}
+
+button[onclick="bulkUndo()"] {
+  background: #d48806 !important;
+  color: #fff !important;
+}
+
+button[onclick="selectAllChecks()"] {
+  background: #0056b3 !important;
+  color: #fff !important;
+}
+
+button[onclick="unselectAllChecks()"] {
+  background: #b21f2d !important;
+  color: #fff !important;
+}
+/* ============================
+   Pilgrims Card Wrapper
+============================ */
+#pilgrims.card {
+  background: #f8faff;
+  border: 1px solid #d0d8f0;
+}
+
+/* ============================
+   Search Input
+============================ */
+#tableSearch {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #c8d0e8;
+  width: 300px;
+  margin-bottom: 15px;
+  font-size: 15px;
+  transition: 0.25s ease;
+}
+
+#tableSearch:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 8px rgba(13,71,161,0.25);
+}
+
+/* ============================
+   Pilgrims Table — Header
+============================ */
+#pilgrimsTable {
+  width: auto !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 15px;
+  margin: 0 auto; /* مهم للتوسيط */
+}
+
+#pilgrimsTable thead tr {
+  background: var(--primary);
+  color: #fff;
+  font-weight: bold;
+  text-align: center;
+}
+
+#pilgrimsTable thead th {
+  padding: 12px 8px;
+  border-bottom: 2px solid #08306b;
+  letter-spacing: 0.3px;
+}
+
+/* ============================
+   Pilgrims Table — Body
+============================ */
+#pilgrimsTable tbody tr {
+  transition: 0.25s ease;
+}
+
+#pilgrimsTable tbody td {
+  padding: 12px 14px;
+  font-size: 15px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+/* صفوف بالتناوب */
+#pilgrimsTable tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+/* Hover */
+#pilgrimsTable tbody tr:hover {
+  background: #e3f2fd !important;
+  transform: scale(1.01);
+}
+
+/* ============================
+   Pilgrims Status Colors
+============================ */
+.status-tawkeel td {
+  background: #fff8e1 !important;
+}
+
+.status-rami td {
+  background: #e8f5e9 !important;
+}
+
+.status-thabh td {
+  background: #ffebee !important;
+  font-weight: bold;
+}
+
+/* ============================
+   Pilgrims Toolbar
+============================ */
+.pilgrims-toolbar {
+  background: #eef3ff;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d0d8f0;
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pilgrims-toolbar button,
+.pilgrims-toolbar select {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.25s ease;
+}
+
+.pilgrims-toolbar button {
+  background: var(--primary);
+  color: white;
+}
+
+.pilgrims-toolbar button:hover {
+  background: var(--primary-dark);
+}
+
+.pilgrims-toolbar select {
+  background: white;
+  border: 1px solid #bfc7dd;
+}
+/* توسيط جدول الحجاج مثل صفحات الذبح والإجراءات */
+.table-wrapper {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+#pilgrimsTable {
+  width: auto !important;
+  margin: 0 auto;
+}
+#pilgrimsTable td, 
+#pilgrimsTable th {
+  font-weight: 700;
+}
+/* ============================
+   Actions Table — Centered
+============================ */
+#actionsTable {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: auto !important;
+  max-width: 1500px !important;
+  display: table !important;
+  border-collapse: collapse;
+  font-size: 17px;
+}
+
+/* ============================
+   Header Checkbox (✓)
+============================ */
+#actionsTable thead th.select-col {
+  color: transparent !important;
+  width: 45px !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
+  padding: 0 !important;
+  position: relative;
+}
+
+#actionsTable thead th.select-col::after {
+  content: "✓";
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: #0d47a1;
+  border: 2px solid #fff;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#actionsTable tbody td.select-col {
+  width: 45px !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+/* ============================
+   Table Cells
+============================ */
+#actionsTable td,
+#actionsTable th {
+  padding: 12px 10px !important;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+/* ============================
+   Row Colors
+============================ */
+.no-cert td {
+  background: #fff3cd !important;
+}
+
+.sent-row td {
+  background: #e8f5e9 !important;
+}
+
+/* ============================
+   Counters Box
+============================ */
+.actions-counters {
+  display: flex;
+  gap: 20px;
+  font-size: 16px;
+  margin-bottom: 15px;
+  background: #f1f8ff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #cfe2ff;
+}
+
+.actions-counters span {
+  font-weight: bold;
+  color: var(--primary);
+}
+
+/* ============================
+   Buttons
+============================ */
+.cert-btn {
+  background: #2e7d32 !important;
+  color: #fff !important;
+  padding: 7px 14px !important;
+  border-radius: 6px !important;
+  font-size: 15px !important;
+}
+
+.cert-btn:hover {
+  background: #1b5e20 !important;
+}
+
+.send-btn {
+  background: #1565c0 !important;
+  color: #fff !important;
+  padding: 7px 14px !important;
+  border-radius: 6px !important;
+  font-size: 15px !important;
+  margin-left: 5px !important;
+}
+
+.send-btn:hover {
+  background: #0d47a1 !important;
+}
+
+.combo-btn {
+  background: #c62828 !important;
+  color: #fff !important;
+  padding: 7px 14px !important;
+  border-radius: 6px !important;
+  font-size: 15px !important;
+  margin-left: 5px !important;
+}
+
+.combo-btn:hover {
+  background: #8e0000 !important;
+}
+
+.send-all-btn {
+  background: #6a1b9a;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  margin-bottom: 15px;
+}
+
+.send-all-btn:hover {
+  background: #4a148c;
+}
+
+.gender-filters {
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.gender-filters .filter-btn {
+  background: #0288d1;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.gender-filters .filter-btn:hover {
+  background: #01579b;
+}
+
+.refresh-btn {
+  background: #455a64;
+  color: #fff;
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  margin-bottom: 15px;
+}
+
+.refresh-btn:hover {
+  background: #263238;
+}
+/* ============================
+   Reports Buttons
+============================ */
+#reports button {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  margin-left: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  transition: 0.25s ease;
+  color: white;
+}
+
+#reports button:nth-child(1) { background: #0d47a1; }
+#reports button:nth-child(2) { background: #1565c0; }
+#reports button:nth-child(3) { background: #2e7d32; }
+#reports button:nth-child(4) { background: var(--danger); }
+
+#reports button:hover {
+  filter: brightness(0.85);
+}
+
+/* ============================
+   Report Content Box
+============================ */
+#reportContent {
+  background: #ffffff;
+  padding: 20px 22px;
+  border-radius: 14px;
+  border: 1px solid #d0d4e4;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  font-size: 15px;
+  line-height: 1.8;
+  margin-top: 15px;
+}
+
+/* ============================
+   Reports Grid (Cards)
+============================ */
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.report-card {
+  background: #eef3ff;
+  border: 1px solid #c8d0e8;
+  padding: 20px;
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.report-card:hover {
+  background: #dce6ff;
+  transform: translateY(-4px);
+}
+
+.report-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.report-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.report-content {
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid #d0d4e4;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+/* ============================
+   Import Page Wrapper
+============================ */
+#import {
+  background: #f8faff;
+  border: 1px solid #d0d8f0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+/* ============================
+   File Input
+============================ */
+#excelFile {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #bfc7dd;
+  background: white;
+  width: 260px;
+  transition: 0.25s ease;
+}
+
+#excelFile:hover {
+  border-color: var(--primary);
+}
+
+/* ============================
+   Import Button
+============================ */
+#import button {
+  background: var(--primary);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: 0.25s ease;
+  font-size: 14px;
+}
+
+#import button:hover {
+  background: var(--primary-dark);
+}
+
+/* ============================
+   Import Message
+============================ */
+#importMsg {
+  margin-top: 15px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+/* ============================
+   Search Input
+============================ */
+#searchInput {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #c8d0e8;
+  width: 260px;
+  transition: 0.25s ease;
+}
+
+#searchInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 6px rgba(13,71,161,0.25);
+}
+
+/* ============================
+   Search Button
+============================ */
+#search button {
+  background: #1565c0;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: 0.25s ease;
+  font-size: 14px;
+}
+
+#search button:hover {
+  background: #0d47a1;
+}
+
+/* ============================
+   Search Result Box
+============================ */
+#searchResult {
+  background: #f8faff;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #d0d8f0;
+  margin-top: 15px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+/* ============================
+   Tawkeel Textarea
+============================ */
+.tawkeel-textarea {
+  width: 100%;
+  height: 220px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+  resize: vertical;
+}
+
+/* ============================
+   Save Button
+============================ */
+.tawkeel-save-btn {
+  margin-top: 15px;
+  padding: 12px;
+  width: 100%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+
+.tawkeel-save-btn:hover {
+  background: var(--primary-dark);
+}
+
+/* ============================
+   Success Message
+============================ */
+.tawkeel-msg {
+  margin-top: 15px;
+  font-weight: 600;
+  color: green;
+}
+/* ============================
+   Filter Bar
+============================ */
+.filter-bar {
+  background: #eef3ff;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d0d8f0;
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-bar select,
+.filter-bar input,
+.filter-bar button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #bfc7dd;
+  background: white;
+  font-size: 14px;
+  transition: 0.25s ease;
+}
+
+.filter-bar button {
+  background: var(--primary);
+  color: white;
+  border: none;
+}
+
+.filter-bar button:hover {
+  background: var(--primary-dark);
+}
+
+/* ============================
+   Animations
+============================ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeRow {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================
+   Responsive Layout
+============================ */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .top-header {
+    height: auto;
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 220px;
+  }
+
+  .content {
+    margin-right: 220px;
+    width: calc(100% - 220px);
+  }
+}
+
+@media (max-width: 550px) {
+  .sidebar {
+    display: none;
+  }
+
+  .content {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .top-header {
+    right: 0;
+  }
+}
+
+/* ============================
+   Print Styles
+============================ */
+@media print {
+  body {
+    background: white;
+  }
+
+  .sidebar,
+  .top-header,
+  .filter-bar,
+  .actions-counters,
+  .pilgrims-toolbar,
+  .slaughter-toolbar {
+    display: none !important;
+  }
+
+  .content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  table {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #000 !important;
+    padding: 6px !important;
+  }
+}
+</style>
