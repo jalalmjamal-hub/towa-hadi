@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة الإدارة — شركة طوى الشرق لحجاج الداخل</title>
+
+  <link rel="icon" type="image/png" href="https://i.imgur.com/qV5bfob.gif">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <?!= include('admin_css'); ?>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-image">
+      <img src="https://i.imgur.com/qV5bfob.gif" alt="شعار شركة طوى الشرق">
+    </div>
+    <div class="sidebar-title">
+      <div class="title-main">شركة طوى الشرق</div>
+      <div class="title-sub">لحجاج الداخل</div>
+    </div>
+  </div>
+
+  <div class="menu-item" onclick="showPage('dashboard', event)">
+    <span class="menu-icon">📊</span>
+    <span>لوحة التحكم — Dashboard</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('search', event)">
+    <span class="menu-icon">🔍</span>
+    <span>البحث — Search</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('slaughter', event)">
+    <span class="menu-icon">🥩</span>
+    <span>الذبح — Slaughter</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('pilgrims', event)">
+    <span class="menu-icon">🧾</span>
+    <span>قائمة الحجاج — Pilgrims</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('import', event)">
+    <span class="menu-icon">📥</span>
+    <span>استيراد الحجاج — Import Excel</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('reports', event)">
+    <span class="menu-icon">📑</span>
+    <span>التقارير — Reports</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('actions', event)">
+    <span class="menu-icon">📨</span>
+    <span>الإجراءات — Actions</span>
+  </div>
+
+  <div class="menu-item" onclick="showPage('tawkeel_settings', event)">
+    <span class="menu-icon">⚙️</span>
+    <span>إعدادات نص التوكيل</span>
+  </div>
+
+</div>
+
+<!-- Header -->
+<div class="top-header">
+  <div class="top-left header-logo-box">
+    <img class="header-logo" src="https://i.imgur.com/qV5bfob.gif">
+    <div>
+      <div class="company-name">شركة طوى الشرق لحجاج الداخل</div>
+      <div class="system-name">نظام إدارة الهدي </div>
+    </div>
+  </div>
+  <div class="top-right">
+    <div class="badge">موسم حج 1448 هـ</div>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Dashboard Page -->
+  <div id="dashboard" class="card dashboard-card">
+    <div class="card-header">
+      <h3>لوحة التحكم — Dashboard</h3>
+      <div class="card-subtitle">نظرة شاملة على حالة تنفيذ الهدي</div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="stat-card stat-total">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">إجمالي الحجاج</div>
+        <div class="stat-value" id="statTotal">—</div>
+      </div>
+      <div class="stat-card stat-tawkeel">
+        <div class="stat-icon">✍️</div>
+        <div class="stat-label">تم التوكيل</div>
+        <div class="stat-value" id="statTawkeel">—</div>
+      </div>
+      <div class="stat-card stat-rami">
+        <div class="stat-icon">🪨</div>
+        <div class="stat-label">تم الرمي</div>
+        <div class="stat-value" id="statRami">—</div>
+      </div>
+      <div class="stat-card stat-thabh">
+        <div class="stat-icon">🥩</div>
+        <div class="stat-label">تم الذبح</div>
+        <div class="stat-value" id="statThabh">—</div>
+      </div>
+      <div class="stat-card stat-pending">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-label">لم يتم الذبح</div>
+        <div class="stat-value" id="statNotThabh">—</div>
+      </div>
+    </div>
+
+    <div class="dashboard-bottom">
+      <div class="progress-section">
+        <div class="progress-title">نسبة الإنجاز الكلية</div>
+        <div class="progress-bg">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <div id="progressLabel" class="progress-label">0%</div>
+      </div>
+
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-label">نسبة التوكيل</div>
+          <div class="mini-value" id="miniTawkeel">—%</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-label">نسبة الرمي</div>
+          <div class="mini-value" id="miniRami">—%</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-label">نسبة الذبح</div>
+          <div class="mini-value" id="miniThabh">—%</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="stats" class="stats-raw-box"></div>
+  </div>
+
+  <!-- Search Page -->
+  <div id="search" class="card" style="display:none;">
+    <div class="card-header">
+      <h3>البحث — Search</h3>
+    </div>
+
+    <input id="searchInput" type="text" placeholder="رقم الهوية أو الجوال" style="width:250px;">
+    <button onclick="searchHajAdmin()">بحث</button>
+
+    <div id="searchResult" style="margin-top:15px; font-size:16px;"></div>
+  </div>
+
+<!-- Slaughter Page -->
+<div id="slaughter" class="card" style="display:none;">
+  
+  <div class="card-header">
+    <h3>الذبح — Slaughter</h3>
+  </div>
+
+  <!-- أزرار الفلترة -->
+  <div class="slaughter-tabs" style="margin-bottom: 15px; display:flex; gap:10px;">
+    <button class="filter-btn active" onclick="setGenderFilter('all', this)">الجميع</button>
+    <button class="filter-btn" onclick="setGenderFilter('male', this)">ذكور</button>
+    <button class="filter-btn" onclick="setGenderFilter('female', this)">إناث</button>
+    <button class="filter-btn" onclick="sortByNameAZ()">أبجدي</button>
+    <button class="filter-btn" onclick="sortByMarja()">حسب المرجع</button>
+  </div>
+
+  <select id="filterMarja" onchange="reloadSlaughterData()">
+    <option value="all">كل المراجع</option>
+  </select>
+
+  <!-- العداد + زر التحديث -->
+  <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px;">
+    <div id="slaughterLiveCounter" class="slaughter-counter" style="flex:1;">يتم التحميل...</div>
+    <button onclick="reloadSlaughterData()" class="refresh-btn">🔄 تحديث</button>
+  </div>
+
+  <!-- أزرار التحكم الجماعي -->
+  <div style="margin-bottom: 15px; display:flex; gap:10px;">
+    <button class="bulk-btn" onclick="bulkSlaughter()" style="padding:8px 15px; background:#28a745; color:white; border:none; border-radius:5px; cursor:pointer;">
+      🐑 تنفيذ جماعي
+    </button>
+
+    <button onclick="bulkUndo()" style="padding:8px 15px; background:#ff9800; color:white; border:none; border-radius:5px; cursor:pointer;">
+      ↩️ إلغاء جماعي
+    </button>
+
+    <button onclick="selectAllChecks()" style="padding:8px 15px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer;">
+      ✔️ تحديد الكل
+    </button>
+
+    <button onclick="unselectAllChecks()" style="padding:8px 15px; background:#dc3545; color:white; border:none; border-radius:5px; cursor:pointer;">
+      ✖️ إلغاء تحديد الكل
+    </button>
+  </div>
+
+  <!-- شريط الأدوات -->
+  <div class="slaughter-toolbar">
+    <label><input type="checkbox" id="filterPendingOnly" onchange="reloadSlaughterData()"> عرض المتبقين فقط</label>
+    <input id="slaughterSearch" type="text" placeholder="بحث..." onkeyup="filterSlaughterTable()">
+  </div>
+
+  <!-- WRAPPER -->
+  <div class="table-wrapper">
+    <table id="slaughterTable">
+      <thead>
+        <tr>
+          <th class="select-col">اختيار</th>
+          <th>#</th>
+          <th>الاسم</th>
+          <th>الهوية</th>
+          <th>الجوال</th>
+          <th>الجنس</th>
+          <th>مرجع التقليد</th>
+          <th>التوكيل</th>
+          <th>الرمي</th>
+          <th>الذبح</th>
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Pilgrims Page -->
+<div id="pilgrims" class="card" style="display:none;">
+  <div class="card-header">
+    <h3>قائمة الحجاج — Pilgrims</h3>
+  </div>
+
+  <!-- شريط الفلاتر -->
+  <div class="slaughter-tabs" style="margin-bottom: 15px; display:flex; gap:10px; flex-wrap:wrap;">
+    
+    <select id="filterGenderPilgrims" onchange="applyPilgrimsFilters()">
+      <option value="all">الجميع</option>
+      <option value="male">ذكور</option>
+      <option value="female">إناث</option>
+    </select>
+
+    <select id="filterTawkeelPilgrims" onchange="applyPilgrimsFilters()">
+      <option value="all">التوكيل (الكل)</option>
+      <option value="تم التوكيل">تم التوكيل</option>
+      <option value="—">لم يتم التوكيل</option>
+    </select>
+
+    <select id="filterRamiPilgrims" onchange="applyPilgrimsFilters()">
+      <option value="all">الرمي (الكل)</option>
+      <option value="تم الرمي">تم الرمي</option>
+      <option value="—">لم يتم الرمي</option>
+    </select>
+
+    <select id="filterThabhPilgrims" onchange="applyPilgrimsFilters()">
+      <option value="all">الذبح (الكل)</option>
+      <option value="تم الذبح">تم الذبح</option>
+      <option value="—">لم يتم الذبح</option>
+    </select>
+
+    <!-- 🔥 مرجع التقليد — ID جديد خاص بالحجاج -->
+    <select id="filterMarjaPilgrims" onchange="applyPilgrimsFilters()">
+      <option value="all">كل المراجع</option>
+    </select>
+
+    <input id="filterSearchPilgrims" type="text" placeholder="بحث..." onkeyup="applyPilgrimsFilters()">
+
+    <button class="filter-btn" onclick="sortPilgrimsByNameAZ()">أبجدي</button>
+    <button class="filter-btn" onclick="sortPilgrimsByMarja()">حسب المرجع</button>
+
+    <button onclick="exportExcelFiltered()">📥 Excel</button>
+    <button onclick="google.script.run.withSuccessHandler(url => window.open(url,'_blank')).exportPilgrimsPDF()">📄 PDF</button>
+  </div>
+
+  <div id="pilgrimsStats" class="slaughter-counter" style="margin-bottom:10px; line-height:1.8;">
+    يتم التحميل...
+  </div>
+
+  <!-- الجدول -->
+  <div class="table-wrapper">
+    <table id="pilgrimsTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الاسم</th>
+          <th>الهوية</th>
+          <th>الجوال</th>
+          <th>الجنس</th>
+          <th>مرجع التقليد</th>
+          <th>التوكيل</th>
+          <th>الرمي</th>
+          <th>الذبح</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Import Page -->
+<div id="import" class="card" style="display:none;">
+  <div class="card-header">
+    <h3>استيراد الحجاج — Import Excel</h3>
+  </div>
+
+  <div style="margin:15px 0;">
+    <label>
+      <input type="radio" name="importMode" value="append" checked>
+      إضافة السجلات الجديدة فقط (بدون حذف القديم)
+    </label>
+    <br>
+    <label>
+      <input type="radio" name="importMode" value="replace">
+      حذف جميع السجلات القديمة ثم رفع الجديد
+    </label>
+  </div>
+
+  <input id="excelFile" type="file" accept=".xlsx,.xls">
+  <button onclick="uploadExcel()">رفع الملف</button>
+
+  <div id="importMsg" style="margin-top:15px;"></div>
+
+  <button onclick="deleteAllPilgrims()" 
+          style="margin-top:20px; background:#b30000; color:white;">
+    🗑 مسح جميع الحجاج
+  </button>
+  <div id="deleteMsg" style="margin-top:10px;"></div>
+
+  <div id="previewBox" style="margin-top:20px; display:none;">
+    <h4>معاينة البيانات قبل الاستيراد</h4>
+    <div id="previewCount" style="margin-bottom:10px; font-weight:bold;"></div>
+
+    <table id="previewTable" class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الهوية</th>
+          <th>الجوال</th>
+          <th>الاسم</th>
+          <th>الجنس</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button onclick="confirmImport()" style="margin-top:15px;">
+      ✔ تأكيد الاستيراد
+    </button>
+  </div>
+
+</div>
+
+<!-- Reports Page -->
+<div id="reports" class="card" style="display:none;">
+  
+  <div class="card-header">
+    <h3>التقارير — Reports</h3>
+  </div>
+
+  <!-- شريط الفلترة داخل التقارير -->
+  <div id="reportFilters" style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
+    <select id="reportFilterGender" onchange="applyReportFilters()">
+      <option value="all">الجميع</option>
+      <option value="male">ذكور</option>
+      <option value="female">إناث</option>
+    </select>
+
+    <select id="reportFilterStatus" onchange="applyReportFilters()">
+      <option value="all">كل الإجراءات</option>
+      <option value="tawkeel">تم التوكيل</option>
+      <option value="rami">تم الرمي</option>
+      <option value="thabh">تم الذبح</option>
+      <option value="pending">المتبقين</option>
+    </select>
+  </div>
+
+  <!-- بطاقات التقارير -->
+  <div class="reports-grid">
+
+    <div class="report-card" onclick="loadSummaryReport()">
+      <div class="report-icon">📊</div>
+      <div class="report-title">تقرير ملخص</div>
+    </div>
+
+    <div class="report-card" onclick="loadStatusReport()">
+      <div class="report-icon">📋</div>
+      <div class="report-title">تقرير حسب الإجراءات</div>
+    </div>
+
+    <div class="report-card" onclick="loadGenderReport()">
+      <div class="report-icon">🚻</div>
+      <div class="report-title">تقرير حسب الجنس</div>
+    </div>
+
+    <div class="report-card" onclick="loadPendingReport()">
+      <div class="report-icon">⏳</div>
+      <div class="report-title">تقرير المتأخرين</div>
+    </div>
+
+    <div class="report-card" onclick="loadChartsReport()">
+      <div class="report-icon">📈</div>
+      <div class="report-title">الرسم البياني</div>
+    </div>
+
+  </div>
+
+  <!-- منطقة عرض التقارير -->
+  <div id="reportContent" class="report-content"></div>
+
+</div>
+<!-- Actions Page -->
+<div id="actions" class="card" style="display:none;">
+
+  <div class="card-header">
+    <h3>الإجراءات — Actions</h3>
+  </div>
+
+  <!-- Counters -->
+  <div class="actions-counters">
+    <span id="countCerts">📄 الشهادات المرسلة: 0</span>
+    <span id="countWhats">📨 رسائل الواتساب المرسلة: 0</span>
+    <span id="countNoCert">⚠️ بدون شهادة: 0</span>
+  </div>
+
+  <!-- Filters -->
+  <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <button onclick="filterGender('all')" class="filter-btn">الكل</button>
+    <button onclick="filterGender('ذكر')" class="filter-btn">ذكور</button>
+    <button onclick="filterGender('أنثى')" class="filter-btn">إناث</button>
+
+    <button onclick="sortByNameActions()" class="filter-btn">أبجدي</button>
+    <button onclick="sortByMarjaActions()" class="filter-btn">حسب المرجع</button>
+  </div>
+
+  <!-- فلتر حسب المرجع -->
+  <select id="filterMarjaActions" onchange="loadActionsPage()" style="margin-bottom:10px;">
+    <option value="all">كل المراجع</option>
+  </select>
+
+  <!-- فلتر بدون شهادة -->
+  <label style="display:block; margin-bottom:10px;">
+    <input type="checkbox" id="filterNoCertOnly" onchange="loadActionsPage()"> عرض من ليس لديهم شهادة فقط
+  </label>
+
+  <!-- بحث فوري -->
+  <input id="actionsSearch" type="text" placeholder="بحث..." onkeyup="filterActionsTable()" 
+         style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #ccc; border-radius:5px;">
+
+  <!-- Bulk Buttons -->
+  <div style="margin:15px 0; display:flex; gap:10px; flex-wrap:wrap;">
+    <button onclick="bulkSendWhatsApp()" class="action-btn action-green">📨 واتساب جماعي</button>
+    <button onclick="bulkSendCerts()" class="action-btn action-blue">📄 شهادات جماعية</button>
+    <button onclick="bulkSendCertAndWhats()" class="action-btn action-purple">📄+📨 شهادة + واتساب</button>
+
+    <button onclick="selectAllActions()" class="action-btn action-darkblue">✔️ تحديد الكل</button>
+    <button onclick="unselectAllActions()" class="action-btn action-red">✖️ إلغاء تحديد الكل</button>
+  </div>
+
+  <!-- Table -->
+  <table id="actionsTable" class="table">
+    <thead>
+      <tr>
+        <th class="select-col"></th>
+        <th>#</th>
+        <th>الاسم</th>
+        <th>الهوية</th>
+        <th>الجوال</th>
+        <th>الجنس</th>
+        <th>مرجع التقليد</th>
+        <th>الشهادة</th>
+        <th>إرسال</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+</div>
+
+<style>
+  .action-btn {
+    padding: 10px 18px !important;
+    min-width: 150px !important;
+    text-align: center;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: white !important;
+  }
+
+  .action-green { background:#0b8f3a !important; }
+  .action-blue { background:#0d47a1 !important; }
+  .action-purple { background:#4a148c !important; }
+  .action-darkblue { background:#01579b !important; }
+  .action-red { background:#b71c1c !important; }
+
+  .send-btn, .combo-btn, .cert-btn {
+    padding: 8px 15px !important;
+    min-width: 120px !important;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: white !important;
+  }
+
+  .send-btn { background:#0d47a1 !important; }
+  .combo-btn { background:#4a148c !important; }
+  .cert-btn { background:#0b8f3a !important; }
+</style>
+
+  <!-- Tawkeel Settings Page -->
+  <div id="tawkeel_settings" class="card" style="display:none;">
+    <div class="card-header">
+      <h3>إعدادات نص التوكيل</h3>
+    </div>
+
+    <label>النص الذي يظهر للحاج قبل التوكيل:</label>
+    <textarea id="tawkeelInput" class="tawkeel-textarea"></textarea>
+
+    <button class="tawkeel-save-btn" onclick="saveTawkeelText()">
+      حفظ النص
+    </button>
+
+    <div id="tawkeelMsg" class="tawkeel-msg"></div>
+  </div>
+
+</div> <!-- END CONTENT -->
+
+<script>
+  function deleteAllPilgrims() {
+    google.script.run
+      .withSuccessHandler(msg => {
+        document.getElementById("deleteMsg").innerHTML = msg;
+      })
+      .deleteAllPilgrims();
+  }
+
+  function confirmImport() {
+  let mode = document.querySelector('input[name="importMode"]:checked').value;
+
+  let allowedRows = importedRows.filter(r => r[5] === "OK");
+
+  if (allowedRows.length === 0) {
+    alert("❌ لا يوجد أي سجل صالح للاستيراد.");
+    return;
+  }
+
+  // 1) إرسال البيانات إلى Code.gs
+  google.script.run.withSuccessHandler(function(){
+    
+    // 2) بعد تخزين البيانات، نستدعي confirmImport الحقيقي
+    google.script.run.withSuccessHandler(function(msg){
+      document.getElementById("importMsg").innerHTML = msg;
+
+      document.getElementById("previewBox").style.display = "none";
+      document.querySelector("#previewTable tbody").innerHTML = "";
+      document.getElementById("previewCount").innerHTML = "";
+      document.getElementById("excelFile").value = "";
+
+      loadPilgrims();
+      reloadSlaughterData();
+
+    }).confirmImport(mode);
+
+  }).importPilgrimsArray(allowedRows, mode);
+}
+</script>
+<?!= include('admin_js'); ?>
+</body>
+</html>

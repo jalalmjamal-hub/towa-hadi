@@ -1,0 +1,1337 @@
+<script>
+
+/* تحميل Google Charts */
+google.charts.load('current', {'packages':['corechart']});
+/* =======================
+   Dashboard
+======================= */
+function loadDashboard() {
+  google.script.run.withSuccessHandler(function(stats){
+
+    document.getElementById("statTotal").innerText = stats.total;
+    document.getElementById("statTawkeel").innerText = stats.tawkeel;
+    document.getElementById("statRami").innerText = stats.rami;
+    document.getElementById("statThabh").innerText = stats.thabh;
+    document.getElementById("statNotThabh").innerText = stats.notThabh;
+
+    document.getElementById("stats").innerHTML =
+      "<b>إجمالي الحجاج:</b> " + stats.total + "<br>" +
+      "<b>تم التوكيل:</b> " + stats.tawkeel + "<br>" +
+      "<b>تم الرمي:</b> " + stats.rami + "<br>" +
+      "<b>تم الذبح:</b> " + stats.thabh + "<br>" +
+      "<b>لم يتم الذبح:</b> " + stats.notThabh;
+
+    document.getElementById("progressBar").style.width = stats.progress + "%";
+    document.getElementById("progressLabel").innerText = stats.progress + "%";
+
+    const total = stats.total || 0;
+    const pct = v => total ? Math.round((v / total) * 100) : 0;
+
+    document.getElementById("miniTawkeel").innerText = pct(stats.tawkeel) + "%";
+    document.getElementById("miniRami").innerText = pct(stats.rami) + "%";
+    document.getElementById("miniThabh").innerText = pct(stats.thabh) + "%";
+
+  }).getDashboardStats();
+}
+
+
+/* =======================
+   Search
+======================= */
+function searchHajAdmin() {
+  let q = document.getElementById("searchInput").value.trim();
+  if (!q) {
+    document.getElementById("searchResult").innerHTML = "الرجاء إدخال رقم الهوية أو الجوال";
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(res){
+    if (!res) {
+      document.getElementById("searchResult").innerHTML = "لا يوجد حاج بهذه البيانات";
+      return;
+    }
+
+    document.getElementById("searchResult").innerHTML =
+      "<b>الاسم:</b> " + res.name + "<br>" +
+      "<b>الجنس:</b> " + res.gender + "<br>" +
+      "<b>التوكيل:</b> " + res.tawkeel + "<br>" +
+      "<b>الرمي:</b> " + res.rami + "<br>" +
+      "<b>الذبح:</b> " + res.thabh;
+  }).searchHaj(q);
+}
+
+
+/* =======================
+   Import Excel
+======================= */
+let importedRows = [];
+
+function uploadExcel() {
+  let file = document.getElementById("excelFile").files[0];
+  if (!file) {
+    document.getElementById("importMsg").innerHTML = "❌ الرجاء اختيار ملف";
+    return;
+  }
+
+  let reader = new FileReader();
+  reader.onload = function(e) {
+    let data = new Uint8Array(e.target.result);
+    let workbook = XLSX.read(data, { type: "array" });
+
+    let sheet = workbook.Sheets[workbook.SheetNames[0]];
+    let rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    rows = rows.filter(r => r.join("").trim() !== "");
+
+    let header = rows[0].map(h => h.toString().trim());
+    rows = rows.slice(1);
+
+    let idIndex = header.findIndex(h => h.includes("هوية") || h.includes("ID"));
+    let mobileIndex = header.findIndex(h => h.includes("جوال") || h.includes("Mobile"));
+    let nameIndex = header.findIndex(h => h.includes("اسم") || h.includes("Name"));
+    let genderIndex = header.findIndex(h => h.includes("جنس") || h.includes("Gender"));
+
+    if (idIndex === -1 || mobileIndex === -1 || nameIndex === -1 || genderIndex === -1) {
+      document.getElementById("importMsg").innerHTML =
+        "❌ الملف لا يحتوي على الأعمدة المطلوبة (هوية – جوال – اسم – جنس)";
+      return;
+    }
+
+    importedRows = rows.map(r => [
+      r[idIndex] || "",
+      r[mobileIndex] || "",
+      r[nameIndex] || "",
+      r[genderIndex] || ""
+    ]);
+
+    google.script.run.withSuccessHandler(function(existingIDs){
+
+      let duplicatesDB = 0;
+
+      importedRows = importedRows.map(r => {
+        let id = String(r[0]).trim();
+        if (existingIDs.includes(id)) {
+          r.push("DB_DUP");   // [4]
+          duplicatesDB++;
+        } else {
+          r.push("");         // [4]
+        }
+        return r;
+      });
+
+      showPreview(importedRows, duplicatesDB);
+
+    }).getExistingIDs();
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function showPreview(rows, duplicatesDB = 0) {
+  document.getElementById("previewBox").style.display = "block";
+
+  let tbody = document.querySelector("#previewTable tbody");
+  tbody.innerHTML = "";
+
+  let duplicates = 0;
+  let errors = 0;
+
+  let seen = new Set();
+
+  rows.forEach((r, i) => {
+    let id = r[0];
+    let mobile = r[1];
+    let name = r[2];
+    let gender = r[3];
+    let dbDup = r[4] === "DB_DUP";
+
+    let tr = document.createElement("tr");
+
+    let allow = true;
+
+    if (!id || !name || !gender) {
+      errors++;
+      allow = false;
+      tr.style.background = "#ffdddd";
+    }
+
+    if (seen.has(id)) {
+      duplicates++;
+      allow = false;
+      tr.style.background = "#fff3cd";
+    } else {
+      seen.add(id);
+    }
+
+    if (dbDup) {
+      tr.style.background = "#ffe6b3";
+    }
+
+    r[5] = allow ? "OK" : "NO";
+
+    tr.innerHTML =
+      `<td>${i + 1}</td>
+       <td>${id}</td>
+       <td>${mobile}</td>
+       <td>${name}</td>
+       <td>${gender}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("previewCount").innerHTML =
+    `عدد السجلات: ${rows.length}
+     <br> مكررات داخل الملف: ${duplicates}
+     <br> مكررات في قاعدة البيانات: ${duplicatesDB}
+     <br> سجلات تحتوي أخطاء: ${errors}`;
+}
+
+function confirmImport() {
+  let mode = document.querySelector('input[name="importMode"]:checked').value;
+
+  let allowedRows = importedRows.filter(r => r[5] === "OK" && r[4] !== "DB_DUP");
+
+  if (allowedRows.length === 0) {
+    alert("❌ لا يوجد أي سجل صالح للاستيراد.");
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(msg){
+
+    document.getElementById("importMsg").innerHTML = msg;
+
+    document.getElementById("previewBox").style.display = "none";
+    document.querySelector("#previewTable tbody").innerHTML = "";
+    document.getElementById("previewCount").innerHTML = "";
+    document.getElementById("excelFile").value = "";
+
+    loadPilgrims();
+    reloadSlaughterData();
+
+  }).confirmImport(allowedRows, mode);
+}
+
+
+/* =======================
+   Pilgrims — FINAL VERSION
+======================= */
+var pilgrimsRendered = [];
+var pilgrimsData = [];
+var sortPilgrimsAZ = false;
+var sortByMarjaFlag = false;
+
+/* تحميل قائمة المراجع */
+function loadMarjaFilterPilgrims() {
+  google.script.run.withSuccessHandler(function(list){
+    const select = document.getElementById("filterMarjaPilgrims");
+    select.innerHTML = '<option value="all">كل المراجع</option>';
+
+    list
+      .map(x => (x || "").toString().trim())
+      .filter(x => x !== "" && x !== "—")
+      .forEach(m => {
+        select.innerHTML += `<option value="${m}">${m}</option>`;
+      });
+  }).getAllMarjaList();
+}
+
+/* ترتيب أبجدي */
+function sortPilgrimsByNameAZ() {
+  sortPilgrimsAZ = true;
+  sortByMarjaFlag = false;
+  applyPilgrimsFilters();
+}
+
+/* ترتيب حسب المرجع */
+function sortPilgrimsByMarja() {
+  sortByMarjaFlag = true;
+  sortPilgrimsAZ = false;
+  applyPilgrimsFilters();
+}
+
+/* =======================
+   تحميل البيانات مرة واحدة فقط
+======================= */
+function initPilgrimsPage() {
+  google.script.run.withSuccessHandler(function(rows){
+    pilgrimsData = rows;
+    loadMarjaFilterPilgrims();
+    applyPilgrimsFilters();
+  }).getAllPilgrims();
+}
+
+/* =======================
+   الفلاتر + الترتيب + البحث
+======================= */
+function applyPilgrimsFilters() {
+
+  let gender = document.getElementById("filterGenderPilgrims").value;
+  let tawkeel = document.getElementById("filterTawkeelPilgrims").value;
+  let rami = document.getElementById("filterRamiPilgrims").value;
+  let thabh = document.getElementById("filterThabhPilgrims").value;
+  let marjaFilter = document.getElementById("filterMarjaPilgrims").value;
+  let search = document.getElementById("filterSearchPilgrims").value.trim();
+
+  let dataToRender = [...pilgrimsData];
+
+  /* فلتر الجنس */
+  if (gender !== "all") {
+    dataToRender = dataToRender.filter(r =>
+      gender === "male"
+        ? r[3] === "ذكر"
+        : (r[3] === "أنثى" || r[3] === "انثى")
+    );
+  }
+
+  /* فلتر التوكيل */
+  if (tawkeel !== "all") {
+    dataToRender = dataToRender.filter(r =>
+      tawkeel === "تم التوكيل"
+        ? r[4] && r[4].includes("تم")
+        : (!r[4] || r[4] === "—")
+    );
+  }
+
+  /* فلتر الرمي */
+  if (rami !== "all") {
+    dataToRender = dataToRender.filter(r =>
+      rami === "تم الرمي"
+        ? r[5] && r[5].includes("تم")
+        : (!r[5] || r[5] === "—")
+    );
+  }
+
+  /* فلتر الذبح */
+  if (thabh !== "all") {
+    dataToRender = dataToRender.filter(r =>
+      thabh === "تم الذبح"
+        ? r[6] && r[6].includes("ذبح")
+        : (!r[6] || r[6] === "—")
+    );
+  }
+
+  /* فلتر المرجع */
+  if (marjaFilter !== "all") {
+    dataToRender = dataToRender.filter(r => (r[8] || "").trim() === marjaFilter);
+  }
+
+  /* البحث */
+  if (search !== "") {
+    dataToRender = dataToRender.filter(r =>
+      r[2].includes(search) || r[0].toString().includes(search)
+    );
+  }
+
+  /* الترتيب */
+  if (sortPilgrimsAZ) {
+    dataToRender.sort((a, b) => a[2].localeCompare(b[2], 'ar'));
+  }
+
+  if (sortByMarjaFlag) {
+    dataToRender.sort((a, b) => (a[8] || "").localeCompare(b[8] || "", 'ar'));
+  }
+
+  /* حفظ البيانات المعروضة للتصدير */
+  pilgrimsRendered = dataToRender;
+
+  /* ============================
+        حساب الإحصائيات
+  ============================ */
+  let total = dataToRender.length;
+  let males = dataToRender.filter(r => r[3] === "ذكر").length;
+  let females = dataToRender.filter(r => r[3] === "أنثى" || r[3] === "انثى").length;
+
+  let tawkeelDone = dataToRender.filter(r => r[4] && r[4].includes("تم")).length;
+  let ramiDone = dataToRender.filter(r => r[5] && r[5].includes("تم")).length;
+  let thabhDone = dataToRender.filter(r => r[6] && r[6].includes("ذبح")).length;
+
+  let remaining = total - thabhDone;
+
+  document.getElementById("pilgrimsStats").innerHTML = `
+    📊 إجمالي الحجاج: ${total}  
+    — 👨 الذكور: ${males}  
+    — 👩 الإناث: ${females}  
+    — 🟡 تم التوكيل: ${tawkeelDone}  
+    — 🔵 تم الرمي: ${ramiDone}  
+    — 🟢 تم الذبح: ${thabhDone}  
+    — 🔴 المتبقين: ${remaining}
+  `;
+
+  renderPilgrimsTable(dataToRender);
+}
+
+/* =======================
+   رسم الجدول
+======================= */
+function renderPilgrimsTable(rows) {
+  const tbody = document.querySelector("#pilgrimsTable tbody");
+  tbody.innerHTML = "";
+
+  rows.forEach((r, index) => {
+    if (!r[0]) return;
+
+    const id      = r[0];
+    const mobile  = r[1];
+    const name    = r[2];
+    const gender  = r[3];
+    const tawkeel = r[4] || "—";
+    const rami    = r[5] || "—";
+    const thabh   = (r[6] || "").toString().trim();
+    const marja   = (r[8] || "—").toString().trim();
+
+    let tr = document.createElement("tr");
+    tr.setAttribute("data-id", id); // ← مهم
+
+    let rowClass = "";
+    if (thabh.includes("ذبح")) rowClass = "status-thabh";
+    else if (rami.includes("تم")) rowClass = "status-rami";
+    else if (tawkeel.includes("تم")) rowClass = "status-tawkeel";
+
+    tr.className = rowClass;
+
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${name}</td>
+      <td>${id}</td>
+      <td>${mobile}</td>
+      <td>${gender}</td>
+      <td>${marja}</td>
+
+      <td>${tawkeel.includes("تم") ? "🟢 تم" : "🔴 —"}</td>
+      <td>${rami.includes("تم") ? "🟢 تم" : "🔴 —"}</td>
+
+      <td class="thabh-cell">
+        ${thabh.includes("ذبح") ? "🟢 تم الذبح" : "🔴 لم يتم"}
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+/* =======================
+   التصدير
+======================= */
+function exportExcelFiltered() {
+  google.script.run.withSuccessHandler(function(url){
+    window.open(url, "_blank");
+  }).exportPilgrimsExcelFiltered(pilgrimsRendered);
+}
+/* =======================
+   Slaughter Page
+======================= */
+
+var slaughterData = [];
+var sortAZ = false;
+var sortByMarjaFlag = false;
+
+window.currentGenderFilter = "all";
+
+/* =======================
+   Batch Mode Queues
+======================= */
+let slaughterQueue = [];
+let undoQueue = [];
+
+/* =======================
+   تحميل قائمة المراجع
+======================= */
+function loadMarjaFilter() {
+  google.script.run.withSuccessHandler(function(list){
+    const select = document.getElementById("filterMarja");
+    select.innerHTML = '<option value="all">كل المراجع</option>';
+
+    list.forEach(m => {
+      select.innerHTML += `<option value="${m}">${m}</option>`;
+    });
+
+  }).getAllMarjaList();
+}
+
+window.onload = function() {
+  loadMarjaFilter();
+  reloadSlaughterData();
+};
+
+/* =======================
+   فلتر الجنس
+======================= */
+function setGenderFilter(type, btn){
+  window.currentGenderFilter = type;
+
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  reloadSlaughterData();
+}
+
+/* =======================
+   الفرز
+======================= */
+function sortByNameAZ() {
+  sortAZ = true;
+  sortByMarjaFlag = false;
+  reloadSlaughterData();
+}
+
+function sortByMarja() {
+  sortByMarjaFlag = true;
+  sortAZ = false;
+  reloadSlaughterData();
+}
+
+/* =======================
+   تحديث صف واحد فقط (فوري)
+======================= */
+function updateRowInstant(id, status) {
+  const row = document.querySelector(`tr[data-id='${id}']`);
+  if (!row) return;
+
+  const thabhCell = row.querySelector(".thabh-cell");
+  const slaughterBtn = row.querySelector(".slaughter-btn");
+  const undoBtn = row.querySelector(".undo-btn");
+
+  if (status === "done") {
+    row.classList.add("status-thabh");
+    thabhCell.innerHTML = "🟢 تم الذبح";
+    slaughterBtn.disabled = true;
+    undoBtn.disabled = false;
+  } else {
+    row.classList.remove("status-thabh");
+    thabhCell.innerHTML = "🔴 لم يتم";
+    slaughterBtn.disabled = false;
+    undoBtn.disabled = true;
+  }
+}
+
+/* =======================
+   تنفيذ الذبح (Batch Mode)
+======================= */
+function markSlaughter(id) {
+  updateRowInstant(id, "done");
+  slaughterQueue.push(id);
+}
+
+/* =======================
+   إلغاء الذبح (Batch Mode)
+======================= */
+function undoSlaughter(id) {
+  updateRowInstant(id, "undo");
+  undoQueue.push(id);
+}
+
+/* =======================
+   Batch Writer — كل 5 ثواني
+======================= */
+setInterval(function() {
+
+  if (slaughterQueue.length === 0 && undoQueue.length === 0) return;
+
+  const toSlaughter = [...slaughterQueue];
+  const toUndo = [...undoQueue];
+
+  slaughterQueue = [];
+  undoQueue = [];
+
+  google.script.run.batchUpdateSlaughter(toSlaughter, toUndo);
+
+}, 5000);
+
+/* =======================
+   تنفيذ جماعي للذبح
+======================= */
+function bulkSlaughter() {
+  const checks = document.querySelectorAll(".bulk-check:checked");
+
+  if (checks.length === 0) {
+    alert("لم يتم اختيار أي حاج");
+    return;
+  }
+
+  checks.forEach(ch => {
+    const id = ch.getAttribute("data-id");
+    updateRowInstant(id, "done");
+    slaughterQueue.push(id);
+  });
+
+  alert("تم إضافة الحجاج المحددين إلى قائمة التنفيذ الجماعي");
+}
+
+/* =======================
+   تنفيذ جماعي للإلغاء
+======================= */
+function bulkUndo() {
+  const checks = document.querySelectorAll(".bulk-check:checked");
+
+  if (checks.length === 0) {
+    alert("لم يتم اختيار أي حاج");
+    return;
+  }
+
+  checks.forEach(ch => {
+    const id = ch.getAttribute("data-id");
+    updateRowInstant(id, "undo");
+    undoQueue.push(id);
+  });
+
+  alert("تم إضافة الحجاج المحددين إلى قائمة الإلغاء الجماعي");
+}
+
+/* =======================
+   تحديد الكل / إلغاء الكل
+======================= */
+function selectAllChecks() {
+  document.querySelectorAll(".bulk-check").forEach(ch => ch.checked = true);
+}
+
+function unselectAllChecks() {
+  document.querySelectorAll(".bulk-check").forEach(ch => ch.checked = false);
+}
+
+/* =======================
+   دالة البحث (جديدة)
+======================= */
+function filterSlaughterTable() {
+  const input = document.getElementById("slaughterSearch").value.trim().toLowerCase();
+  const rows = document.querySelectorAll("#slaughterTable tbody tr");
+
+  rows.forEach(row => {
+    const name = row.children[2].innerText.toLowerCase();
+    const id = row.children[3].innerText.toLowerCase();
+    const mobile = row.children[4].innerText.toLowerCase();
+
+    if (
+      name.includes(input) ||
+      id.includes(input) ||
+      mobile.includes(input)
+    ) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+  });
+}
+
+/* =======================
+   إعادة تحميل البيانات
+======================= */
+function reloadSlaughterData() {
+  google.script.run.withSuccessHandler(function(rows){
+
+    slaughterData = rows;
+
+    const tbody = document.querySelector("#slaughterTable tbody");
+    tbody.innerHTML = "";
+
+    let counter = 1;
+    let done = 0;
+    let total = 0;
+
+    let dataToRender = [...rows];
+
+    if (sortAZ) {
+      dataToRender.sort((a, b) => a[2].localeCompare(b[2], 'ar'));
+    }
+
+    if (sortByMarjaFlag) {
+      dataToRender.sort((a, b) => (a[8] || "").localeCompare(b[8] || "", 'ar'));
+    }
+
+    dataToRender.forEach(r => {
+
+      const id      = r[0];
+      const mobile  = r[1];
+      const name    = r[2];
+      const gender  = r[3];
+      const tawkeel = r[4];
+      const rami    = r[5];
+      const thabh   = (r[6] || "").toString().trim();
+      const marja   = (r[8] || "—").toString().trim();
+
+      if (!id) return;
+
+      if (window.currentGenderFilter === "male" && gender !== "ذكر") return;
+      if (window.currentGenderFilter === "female" && !(gender === "أنثى" || gender === "انثى")) return;
+
+      const marjaFilter = document.getElementById("filterMarja").value;
+      if (marjaFilter !== "all" && marja !== marjaFilter) return;
+
+      total++;
+      if (thabh.includes("ذبح")) done++;
+
+      let tr = document.createElement("tr");
+      tr.setAttribute("data-id", id);
+
+      if (thabh.includes("ذبح")) tr.classList.add("status-thabh");
+      else if (rami === "تم الرمي") tr.classList.add("status-rami");
+      else if (tawkeel === "تم التوكيل") tr.classList.add("status-tawkeel");
+
+      let buttons = "";
+
+      if (thabh.includes("ذبح")) {
+        buttons += `
+          <button class="slaughter-btn" disabled>🐑 ذبح</button>
+          <button class="undo-btn" onclick="undoSlaughter('${id}')">↩️ إلغاء</button>
+        `;
+      } else {
+        buttons += `
+          <button class="slaughter-btn" onclick="markSlaughter('${id}')">🐑 ذبح</button>
+          <button class="undo-btn" disabled>↩️ إلغاء</button>
+        `;
+      }
+
+      tr.innerHTML = `
+        <td><input type="checkbox" class="bulk-check" data-id="${id}"></td>
+        <td>${counter++}</td>
+        <td>${name}</td>
+        <td>${id}</td>
+        <td>${mobile}</td>
+        <td>${gender}</td>
+        <td>${marja}</td>
+
+        <td>${tawkeel && tawkeel.includes("تم") ? "🟢 " + tawkeel : "🔴 —"}</td>
+        <td>${rami && rami.includes("تم") ? "🟢 " + rami : "🔴 —"}</td>
+
+        <td class="thabh-cell">
+          ${thabh.includes("ذبح") ? "🟢 تم الذبح" : "🔴 لم يتم"}
+        </td>
+
+        <td>${buttons}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("slaughterLiveCounter").innerHTML =
+      `إجمالي المعروض: ${total} — تم الذبح: ${done} — المتبقين: ${total - done}`;
+
+    /* ⭐ إعادة تطبيق البحث بعد كل تحميل */
+    filterSlaughterTable();
+
+  }).getAllPilgrims();
+}
+/* =======================
+   Actions Page
+======================= */
+
+let actionsSortAZ = false;
+let actionsSortMarja = false;
+let actionsGenderFilter = "all";
+
+/* =======================
+   تحميل قائمة المراجع
+======================= */
+function loadMarjaActionsFilter(list) {
+  const select = document.getElementById("filterMarjaActions");
+  select.innerHTML = '<option value="all">كل المراجع</option>';
+
+  list.forEach(m => {
+    select.innerHTML += `<option value="${m}">${m}</option>`;
+  });
+}
+
+/* =======================
+   تحميل الصفحة
+======================= */
+function loadActionsPage() {
+  google.script.run.withSuccessHandler(function(rows){
+
+    const tbody = document.querySelector("#actionsTable tbody");
+    tbody.innerHTML = "";
+
+    let index = 1;
+    let certCount = 0;
+    let whatsCount = 0;
+    let noCertCount = 0;
+
+    let marjaList = new Set();
+
+    let data = rows.filter(r => r[6] === "تم الذبح");
+
+    /* فلتر الجنس */
+    if (actionsGenderFilter !== "all") {
+      data = data.filter(r => r[3] === actionsGenderFilter);
+    }
+
+    /* فلتر حسب المرجع */
+    const marjaFilter = document.getElementById("filterMarjaActions").value;
+    if (marjaFilter !== "all") {
+      data = data.filter(r => (r[8] || "").trim() === marjaFilter);
+    }
+
+    /* فلتر بدون شهادة */
+    if (document.getElementById("filterNoCertOnly").checked) {
+      data = data.filter(r => !r[7]);
+    }
+
+    /* جمع قائمة المراجع */
+    rows.forEach(r => {
+      if (r[8]) marjaList.add(r[8]);
+    });
+    loadMarjaActionsFilter([...marjaList]);
+
+    /* الفرز */
+    if (actionsSortAZ) {
+      data.sort((a, b) => a[2].localeCompare(b[2], 'ar'));
+    }
+
+    if (actionsSortMarja) {
+      data.sort((a, b) => (a[8] || "").localeCompare(b[8] || "", 'ar'));
+    }
+
+    /* بناء الجدول */
+    data.forEach(r => {
+
+      const id = r[0];
+      const mobile = r[1];
+      const name = r[2];
+      const gender = r[3];
+      const certUrl = r[7] || "";
+      const marja = r[8] || "—";
+
+      if (certUrl) certCount++;
+      else noCertCount++;
+
+      const tr = document.createElement("tr");
+      if (!certUrl) tr.classList.add("no-cert");
+
+      tr.innerHTML = `
+        <td><input type="checkbox" class="actions-check" data-id="${id}" data-mobile="${mobile}" data-cert="${encodeURIComponent(certUrl)}"></td>
+        <td>${index++}</td>
+        <td>${name}</td>
+        <td>${id}</td>
+        <td>${mobile}</td>
+        <td>${gender}</td>
+        <td>${marja}</td>
+
+        <td>
+          <button class="cert-btn" data-cert="${encodeURIComponent(certUrl)}" onclick="openCert(this)">عرض الشهادة</button>
+        </td>
+
+        <td>
+          <button class="send-btn" data-mobile="${mobile}" data-cert="${encodeURIComponent(certUrl)}" onclick="sendActionsWhatsAppBtn(this)">واتساب</button>
+          <button class="combo-btn" data-id="${id}" data-mobile="${mobile}" onclick="sendCertAndWhatsBtn(this)">شهادة + واتساب</button>
+        </td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("countCerts").innerText = "📄 الشهادات المرسلة: " + certCount;
+    document.getElementById("countNoCert").innerText = "⚠️ بدون شهادة: " + noCertCount;
+
+  }).getAllPilgrims();
+}
+
+/* =======================
+   فلاتر
+======================= */
+function filterGender(g) {
+  actionsGenderFilter = g;
+  loadActionsPage();
+}
+
+function sortByNameActions() {
+  actionsSortAZ = true;
+  actionsSortMarja = false;
+  loadActionsPage();
+}
+
+function sortByMarjaActions() {
+  actionsSortMarja = true;
+  actionsSortAZ = false;
+  loadActionsPage();
+}
+
+/* =======================
+   تحديد الكل / إلغاء الكل
+======================= */
+function selectAllActions() {
+  document.querySelectorAll(".actions-check").forEach(ch => ch.checked = true);
+}
+
+function unselectAllActions() {
+  document.querySelectorAll(".actions-check").forEach(ch => ch.checked = false);
+}
+
+/* =======================
+   فتح الشهادة
+======================= */
+function openCert(btn){
+  const certUrl = decodeURIComponent(btn.dataset.cert);
+  if (certUrl) window.open(certUrl, "_blank");
+  else alert("❌ لا يوجد شهادة محفوظة.");
+}
+
+/* =======================
+   واتساب فردي — يعمل 100%
+======================= */
+function sendActionsWhatsAppBtn(btn){
+  if (btn.disabled) return; // منع الضغط المزدوج
+  btn.disabled = true;
+  btn.innerText = "جاري الإرسال...";
+
+  const row = btn.closest("tr");
+  const id = row.children[3].innerText.trim();
+  const phone = btn.dataset.mobile;
+  let certUrl = btn.dataset.cert ? decodeURIComponent(btn.dataset.cert) : "";
+
+  // إذا الشهادة موجودة مسبقًا → نرسل مباشرة
+  if (certUrl && certUrl !== "undefined" && certUrl !== "") {
+    sendActionsWhatsApp(phone, certUrl, btn);
+    return;
+  }
+
+  // إذا الشهادة غير موجودة → نولّدها أولًا
+  google.script.run.withSuccessHandler(function(newCertUrl){
+    btn.dataset.cert = encodeURIComponent(newCertUrl);
+    sendActionsWhatsApp(phone, newCertUrl, btn);
+  }).getOrCreateCert(id);
+}
+
+function sendActionsWhatsApp(phone, certUrl, btn){
+  phone = phone.toString().trim();
+  if (phone.startsWith("0")) phone = "966" + phone.substring(1);
+
+  const msg = "تم تنفيذ ذبح الهدي عنكم بنجاح.\n\nرابط الشهادة:\n" + certUrl;
+  const url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg);
+  window.open(url, "_blank");
+
+  btn.closest("tr").classList.add("sent-row");
+  btn.innerText = "تم الإرسال";
+  btn.disabled = false;
+}
+
+function sendActionsWhatsApp(phone, certUrl, btnElement){
+  phone = phone.toString().trim();
+  if (phone.startsWith("0")) phone = "966" + phone.substring(1);
+
+  const msg = "تم تنفيذ ذبح الهدي عنكم بنجاح.\n\nرابط الشهادة:\n" + certUrl;
+  const url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg);
+  window.open(url, "_blank");
+
+  btnElement.closest("tr").classList.add("sent-row");
+}
+/* =======================
+   شهادة + واتساب فردي (نسخة ذكية)
+======================= */
+function sendCertAndWhatsBtn(btn){
+  if (btn.disabled) return; // منع الضغط المزدوج
+  btn.disabled = true;
+  btn.innerText = "جاري الإرسال...";
+
+  const row = btn.closest("tr");
+  const id = btn.dataset.id;
+  const phone = btn.dataset.mobile;
+  let certUrl = btn.dataset.cert ? decodeURIComponent(btn.dataset.cert) : "";
+
+  // إذا الشهادة موجودة مسبقًا → نفتحها + نرسل واتساب
+  if (certUrl && certUrl !== "undefined" && certUrl !== "") {
+
+    // فتح الشهادة
+    window.open(certUrl, "_blank");
+
+    // إرسال واتساب
+    sendActionsWhatsApp(phone, certUrl, btn);
+    return;
+  }
+
+  // إذا الشهادة غير موجودة → نولّدها أولًا
+  google.script.run.withSuccessHandler(function(newCertUrl){
+
+    btn.dataset.cert = encodeURIComponent(newCertUrl);
+
+    // فتح الشهادة بعد توليدها
+    window.open(newCertUrl, "_blank");
+
+    // إرسال واتساب بالرابط الجديد
+    sendActionsWhatsApp(phone, newCertUrl, btn);
+
+  }).getOrCreateCert(id);
+}
+
+/* =======================
+   تنفيذ جماعي — واتساب فقط
+======================= */
+function bulkSendWhatsApp() {
+  const checks = document.querySelectorAll(".actions-check:checked");
+
+  if (checks.length === 0) {
+    alert("❌ لم يتم اختيار أي حاج");
+    return;
+  }
+
+  checks.forEach(ch => {
+    const mobile = ch.dataset.mobile;
+    const certUrl = decodeURIComponent(ch.dataset.cert);
+    if (certUrl) sendActionsWhatsApp(mobile, certUrl);
+  });
+
+  alert("✔ تم إرسال رسائل واتساب جماعية");
+}
+
+/* =======================
+   تنفيذ جماعي — شهادات فقط
+======================= */
+function bulkSendCerts() {
+  const checks = document.querySelectorAll(".actions-check:checked");
+
+  if (checks.length === 0) {
+    alert("❌ لم يتم اختيار أي حاج");
+    return;
+  }
+
+  checks.forEach(ch => {
+    const certUrl = decodeURIComponent(ch.dataset.cert);
+    if (certUrl) window.open(certUrl, "_blank");
+  });
+
+  alert("✔ تم فتح الشهادات المحددة");
+}
+
+/* =======================
+   تنفيذ جماعي — شهادة + واتساب
+======================= */
+function bulkSendCertAndWhats() {
+  const checks = document.querySelectorAll(".actions-check:checked");
+
+  if (checks.length === 0) {
+    alert("❌ لم يتم اختيار أي حاج");
+    return;
+  }
+
+  checks.forEach(ch => {
+    const id = ch.dataset.id;
+    const mobile = ch.dataset.mobile;
+    sendCertAndWhats(id, mobile);
+  });
+
+  alert("✔ تم تنفيذ شهادة + واتساب جماعي");
+}
+/* =======================
+   بحث فوري
+======================= */
+function filterActionsTable() {
+  const input = document.getElementById("actionsSearch").value.trim().toLowerCase();
+  const rows = document.querySelectorAll("#actionsTable tbody tr");
+
+  rows.forEach(row => {
+    const name = row.children[2].innerText.toLowerCase();
+    const id = row.children[3].innerText.toLowerCase();
+    const mobile = row.children[4].innerText.toLowerCase();
+
+    if (name.includes(input) || id.includes(input) || mobile.includes(input)) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+  });
+}
+
+/* =======================
+   Tawkeel Settings Page
+======================= */
+function loadTawkeelSettings() {
+  google.script.run.withSuccessHandler(function(text){
+    document.getElementById("tawkeelInput").value = text;
+  }).getTawkeelText();
+}
+
+function saveTawkeelText() {
+  const newText = document.getElementById("tawkeelInput").value;
+
+  google.script.run.withSuccessHandler(function(msg){
+    document.getElementById("tawkeelMsg").innerHTML = msg;
+  }).saveTawkeelText(newText);
+}
+
+
+/* =======================
+   Reports — Summary
+======================= */
+function loadSummaryReport() {
+  google.script.run.withSuccessHandler(function(stats){
+
+    document.getElementById("reportContent").innerHTML = `
+      <h3>📊 تقرير ملخص</h3>
+      <p><b>إجمالي الحجاج:</b> ${stats.total}</p>
+      <p><b>تم التوكيل:</b> ${stats.tawkeel}</p>
+      <p><b>تم الرمي:</b> ${stats.rami}</p>
+      <p><b>تم الذبح:</b> ${stats.thabh}</p>
+      <p><b>لم يتم الذبح:</b> ${stats.notThabh}</p>
+    `;
+  }).getDashboardStats();
+}
+
+
+/* =======================
+   Reports — By Status
+======================= */
+function loadStatusReport() {
+  google.script.run.withSuccessHandler(function(rows){
+
+    let tawkeel = rows.filter(r => r[4] === "تم التوكيل").length;
+    let rami    = rows.filter(r => r[5] === "تم الرمي").length;
+    let thabh   = rows.filter(r => r[6] === "تم الذبح").length;
+    let pending = rows.filter(r => r[6] !== "تم الذبح").length;
+
+    document.getElementById("reportContent").innerHTML = `
+      <h3>📋 تقرير حسب الإجراءات</h3>
+      <p><b>تم التوكيل:</b> ${tawkeel}</p>
+      <p><b>تم الرمي:</b> ${rami}</p>
+      <p><b>تم الذبح:</b> ${thabh}</p>
+      <p><b>المتبقين:</b> ${pending}</p>
+    `;
+  }).getAllPilgrims();
+}
+
+
+/* =======================
+   Reports — By Gender
+======================= */
+function loadGenderReport() {
+  google.script.run.withSuccessHandler(function(rows){
+
+    let male   = rows.filter(r => r[3] === "ذكر").length;
+    let female = rows.filter(r => r[3] === "أنثى" || r[3] === "انثى").length;
+
+    document.getElementById("reportContent").innerHTML = `
+      <h3>🚻 تقرير حسب الجنس</h3>
+      <p><b>عدد الذكور:</b> ${male}</p>
+      <p><b>عدد الإناث:</b> ${female}</p>
+    `;
+  }).getAllPilgrims();
+}
+
+
+/* =======================
+   Reports — Pending
+======================= */
+function loadPendingReport() {
+  google.script.run.withSuccessHandler(function(rows){
+
+    let pending = rows.filter(r => r[6] !== "تم الذبح");
+
+    let html = `
+      <h3>⏳ تقرير المتأخرين</h3>
+      <p><b>عدد المتأخرين:</b> ${pending.length}</p>
+      <table class="table" style="margin-top:15px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الاسم</th>
+            <th>الهوية</th>
+            <th>الجوال</th>
+            <th>الجنس</th>
+            <th>التوكيل</th>
+            <th>الرمي</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    pending.forEach((r, i) => {
+      html += `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${r[2]}</td>
+          <td>${r[0]}</td>
+          <td>${r[1]}</td>
+          <td>${r[3]}</td>
+          <td>${r[4]}</td>
+          <td>${r[5]}</td>
+        </tr>
+      `;
+    });
+
+    html += "</tbody></table>";
+
+    document.getElementById("reportContent").innerHTML = html;
+
+  }).getAllPilgrims();
+}
+
+
+/* =======================
+   Reports — Chart
+======================= */
+function loadChartsReport() {
+  google.script.run.withSuccessHandler(function(rows){
+
+    let tawkeel = rows.filter(r => r[4] === "تم التوكيل").length;
+    let rami    = rows.filter(r => r[5] === "تم الرمي").length;
+    let thabh   = rows.filter(r => r[6] === "تم الذبح").length;
+    let pending = rows.filter(r => r[6] !== "تم الذبح").length;
+
+    document.getElementById("reportContent").innerHTML = `
+      <h3>📈 الرسم البياني — الإجراءات</h3>
+      <div id="chart_div" style="width:100%; height:400px;"></div>
+    `;
+
+    google.charts.setOnLoadCallback(drawChart);
+
+    function drawChart() {
+      var data = google.visualization.arrayToDataTable([
+        ['الإجراء', 'عدد'],
+        ['تم التوكيل', tawkeel],
+        ['تم الرمي', rami],
+        ['تم الذبح', thabh],
+        ['المتبقين', pending]
+      ]);
+
+      var options = {
+        title: 'نسبة الإجراءات',
+        pieHole: 0.4,
+        colors: ['#1565c0', '#ffca28', '#2e7d32', '#c62828'],
+        legend: { position: 'right', textStyle: { fontSize: 14 } }
+      };
+
+      var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
+      chart.draw(data, options);
+    }
+
+  }).getAllPilgrims();
+}
+
+
+/* =======================
+   Reports — Filters
+======================= */
+function applyReportFilters() {
+  const g = document.getElementById("reportFilterGender").value;
+  const s = document.getElementById("reportFilterStatus").value;
+
+  google.script.run.withSuccessHandler(function(rows){
+
+    let filtered = rows;
+
+    if (g === "male") filtered = filtered.filter(r => r[3] === "ذكر");
+    if (g === "female") filtered = filtered.filter(r => r[3] === "أنثى" || r[3] === "انثى");
+
+    if (s === "tawkeel") filtered = filtered.filter(r => r[4] === "تم التوكيل");
+    if (s === "rami")    filtered = filtered.filter(r => r[5] === "تم الرمي");
+    if (s === "thabh")   filtered = filtered.filter(r => r[6] === "تم الذبح");
+    if (s === "pending") filtered = filtered.filter(r => r[6] !== "تم الذبح");
+
+    let html = `
+      <h3>📋 نتائج الفلترة</h3>
+      <p><b>عدد النتائج:</b> ${filtered.length}</p>
+      <table class="table" style="margin-top:15px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الاسم</th>
+            <th>الهوية</th>
+            <th>الجوال</th>
+            <th>الجنس</th>
+            <th>التوكيل</th>
+            <th>الرمي</th>
+            <th>الذبح</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    filtered.forEach((r, i) => {
+      html += `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${r[2]}</td>
+          <td>${r[0]}</td>
+          <td>${r[1]}</td>
+          <td>${r[3]}</td>
+          <td>${r[4]}</td>
+          <td>${r[5]}</td>
+          <td>${r[6]}</td>
+        </tr>
+      `;
+    });
+
+    html += "</tbody></table>";
+
+    document.getElementById("reportContent").innerHTML = html;
+
+  }).getAllPilgrims();
+}
+
+
+/* =======================
+   Page Navigation
+======================= */
+function showPage(page, evt) {
+
+  document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+
+  if (evt && evt.target) {
+    const item = evt.target.closest('.menu-item');
+    if (item) item.classList.add('active');
+  }
+
+  document.querySelectorAll('.card').forEach(c => c.style.display = 'none');
+
+  const pageEl = document.getElementById(page);
+  if (pageEl) pageEl.style.display = 'block';
+
+  if (page === "dashboard") loadDashboard();
+
+  if (page === "pilgrims") {
+    requestAnimationFrame(() => {
+        initPilgrimsPage();   // ← ← ← الحل هنا
+    });
+  }
+
+  if (page === "slaughter") reloadSlaughterData();
+  if (page === "actions") loadActionsPage();
+  if (page === "tawkeel_settings") loadTawkeelSettings();
+
+  if (page === "reports") {
+    document.getElementById("reportContent").innerHTML = "";
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  showPage('dashboard');
+});
+
+
+/* =======================
+   Actions Filters / Excel
+======================= */
+function filterGender(g) {
+  const rows = document.querySelectorAll("#actionsTable tbody tr");
+
+  rows.forEach(row => {
+    const gender = row.children[4].innerText.trim();
+
+    if (g === "all") {
+      row.style.display = "";
+    } else if (gender === g) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+  });
+}
+
+function openLink(base64) {
+  if (!base64) {
+    alert("لم يتم إنشاء الملف.");
+    return;
+  }
+
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+
+  const byteArray = new Uint8Array(byteNumbers);
+
+  const blob = new Blob([byteArray], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
+</script>

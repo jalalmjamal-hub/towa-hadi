@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>إعدادات نص التوكيل</title>
+
+  <!-- ⚠️ مهم: لا نحمّل admin_css هنا -->
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: #f4f6fa;
+      padding: 20px;
+      display: block !important;
+    }
+
+    .page-box {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      max-width: 700px;
+      margin: 30px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    textarea {
+      width: 100%;
+      height: 220px;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      resize: vertical;
+    }
+
+    .save-btn {
+      margin-top: 15px;
+      width: 100%;
+      padding: 12px;
+      background: #0d47a1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .save-btn:hover {
+      background: #08306b;
+    }
+
+    #msg {
+      margin-top: 15px;
+      text-align: center;
+      font-weight: 600;
+      color: green;
+    }
+
+    /* زر الرجوع */
+    .back-btn {
+      background: #444;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 17px;
+      cursor: pointer;
+      display: block;
+      width: 260px;
+      margin: 10px auto 25px auto;
+      text-align: center;
+    }
+
+    .back-btn:hover {
+      background: #222;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- زر الرجوع -->
+  <button class="back-btn" onclick="goBack()">⬅ الرجوع إلى لوحة التحكم</button>
+
+  <div class="page-box">
+    <h2 style="text-align:center; color:#0d47a1;">إعدادات نص التوكيل</h2>
+
+    <label>النص الذي يظهر للحاج قبل التوكيل:</label>
+    <textarea id="tawkeelInput"></textarea>
+
+    <button class="save-btn" onclick="saveText()">حفظ النص</button>
+
+    <div id="msg"></div>
+  </div>
+
+  <script>
+    // جلب النص الحالي
+    google.script.run.withSuccessHandler(function(text){
+      document.getElementById("tawkeelInput").value = text;
+    }).getTawkeelText();
+
+    // حفظ النص
+    function saveText() {
+      const newText = document.getElementById("tawkeelInput").value;
+
+      google.script.run.withSuccessHandler(function(msg){
+        document.getElementById("msg").innerHTML = msg;
+      }).saveTawkeelText(newText);
+    }
+  </script>
+
+</body>
+</html>
