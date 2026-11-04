@@ -150,6 +150,34 @@ function bodySize(req) {
   }
 }
 
+function diagnosticContentType(headers) {
+  const contentType = headers && headers.get
+    ? String(headers.get("content-type") || "").split(";", 1)[0].trim().toLowerCase()
+    : "";
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(contentType)
+    ? contentType
+    : "unknown";
+}
+
+function logUpstreamDiagnostic(code, details) {
+  const entry = {
+    event: "pilgrim_upstream",
+    code,
+    action: ALLOWED_ACTIONS.has(details.action) ? details.action : "unknown",
+    stage: details.stage
+  };
+  if (Number.isInteger(details.status)) entry.status = details.status;
+  if (details.contentType) entry.contentType = details.contentType;
+  if (typeof details.redirected === "boolean") entry.redirected = details.redirected;
+  if (["AbortError", "TypeError", "Error"].includes(details.errorType)) {
+    entry.errorType = details.errorType;
+  }
+  if (Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, details.errorCode)) {
+    entry.errorCode = details.errorCode;
+  }
+  console.info(JSON.stringify(entry));
+}
+
 async function handler(req, res) {
   setCommonHeaders(res);
   if (req.method !== "POST") {
@@ -184,26 +212,77 @@ async function handler(req, res) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-      redirect: "follow",
-      signal: controller.signal,
-      body: JSON.stringify({ ...validation.value, apiToken: token })
-    });
-    const text = await response.text();
+    let response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        redirect: "follow",
+        signal: controller.signal,
+        body: JSON.stringify({ ...validation.value, apiToken: token })
+      });
+    } catch (error) {
+      logUpstreamDiagnostic("UPSTREAM_FETCH_FAILED", {
+        action: validation.value.action,
+        stage: "fetch",
+        errorType: error && error.name
+      });
+      return send(res, 502, publicError("UNAVAILABLE", true));
+    }
+
+    const upstreamDetails = {
+      action: validation.value.action,
+      stage: "response",
+      status: response.status,
+      contentType: diagnosticContentType(response.headers),
+      redirected: response.redirected === true
+    };
+    let text;
+    try {
+      text = await response.text();
+    } catch {
+      logUpstreamDiagnostic("UPSTREAM_INVALID_RESPONSE", {
+        ...upstreamDetails,
+        stage: "body_read"
+      });
+      return send(res, 502, publicError("UNAVAILABLE", true));
+    }
+
     let upstream;
     try {
       upstream = JSON.parse(text);
     } catch {
+      logUpstreamDiagnostic("UPSTREAM_NON_JSON", {
+        ...upstreamDetails,
+        stage: "json_parse"
+      });
       return send(res, 502, publicError("UNAVAILABLE", true));
     }
-    if (!response.ok || !upstream || typeof upstream !== "object") {
+    if (!response.ok) {
+      logUpstreamDiagnostic("UPSTREAM_HTTP_ERROR", {
+        ...upstreamDetails,
+        stage: "http_status"
+      });
+      return send(res, 502, publicError("UNAVAILABLE", true));
+    }
+    if (!upstream || typeof upstream !== "object" || Array.isArray(upstream)) {
+      logUpstreamDiagnostic("UPSTREAM_INVALID_RESPONSE", {
+        ...upstreamDetails,
+        stage: "json_shape"
+      });
       return send(res, 502, publicError("UNAVAILABLE", true));
     }
     if (upstream.ok !== true) {
       const code = upstream.error && upstream.error.code;
+      const safeCode = Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, code)
+        ? code
+        : "UNAVAILABLE";
+      logUpstreamDiagnostic("UPSTREAM_APP_ERROR", {
+        ...upstreamDetails,
+        stage: "application_result",
+        errorCode: safeCode
+      });
       const status = code === "NOT_FOUND" ? 404
         : code === "FORBIDDEN" ? 403
           : code === "INVALID_REQUEST" ? 400
@@ -212,9 +291,24 @@ async function handler(req, res) {
       return send(res, status, publicError(code, upstream.error && upstream.error.retryable === true));
     }
     const data = responseData(validation.value.action, upstream.data);
-    if (!data) return send(res, 502, publicError("UNAVAILABLE", true));
+    if (!data) {
+      logUpstreamDiagnostic("UPSTREAM_INVALID_RESPONSE", {
+        ...upstreamDetails,
+        stage: "payload_validation"
+      });
+      return send(res, 502, publicError("UNAVAILABLE", true));
+    }
+    logUpstreamDiagnostic("UPSTREAM_OK", {
+      ...upstreamDetails,
+      stage: "complete"
+    });
     return send(res, 200, { ok: true, data });
-  } catch {
+  } catch (error) {
+    logUpstreamDiagnostic("UPSTREAM_INVALID_RESPONSE", {
+      action: validation.value.action,
+      stage: "processing",
+      errorType: error && error.name
+    });
     return send(res, 502, publicError("UNAVAILABLE", true));
   } finally {
     clearTimeout(timer);

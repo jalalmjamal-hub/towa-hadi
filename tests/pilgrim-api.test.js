@@ -131,6 +131,57 @@ test("sanitizes personal data and internal details from upstream errors", async 
   }
 });
 
+test("logs sanitized diagnostics for successful, non-JSON, and failed upstream calls", async () => {
+  const originalFetch = global.fetch;
+  const originalInfo = console.info;
+  const entries = [];
+  console.info = message => entries.push(JSON.parse(message));
+  try {
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      redirected: true,
+      headers: { get: () => "application/json; charset=utf-8" },
+      text: async () => JSON.stringify({ ok: true, data: { year: "1448" } })
+    });
+    const success = await invoke({ action: "pilgrim.season" });
+    assert.equal(success.statusCode, 200);
+    assert.deepEqual(entries[0], {
+      event: "pilgrim_upstream",
+      code: "UPSTREAM_OK",
+      action: "pilgrim.season",
+      stage: "complete",
+      status: 200,
+      contentType: "application/json",
+      redirected: true
+    });
+
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      redirected: false,
+      headers: { get: () => "text/html; charset=utf-8" },
+      text: async () => `<html>token=${process.env.PILGRIM_API_TOKEN}; id=0012345678</html>`
+    });
+    const nonJson = await invoke({ action: "pilgrim.season" });
+    assert.equal(nonJson.statusCode, 502);
+    assert.equal(entries[1].code, "UPSTREAM_NON_JSON");
+
+    global.fetch = async () => {
+      throw new Error(`token=${process.env.PILGRIM_API_TOKEN}; id=0012345678`);
+    };
+    const failed = await invoke({ action: "pilgrim.season" });
+    assert.equal(failed.statusCode, 502);
+    assert.equal(entries[2].code, "UPSTREAM_FETCH_FAILED");
+    const serializedLogs = JSON.stringify(entries);
+    assert.equal(serializedLogs.includes(process.env.PILGRIM_API_TOKEN), false);
+    assert.equal(serializedLogs.includes("0012345678"), false);
+  } finally {
+    global.fetch = originalFetch;
+    console.info = originalInfo;
+  }
+});
+
 test("fails closed when the server-side endpoint or token is missing", async () => {
   delete process.env.PILGRIM_API_TOKEN;
   const response = await invoke({ action: "pilgrim.season" });
