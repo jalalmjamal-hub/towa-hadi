@@ -528,6 +528,7 @@
     .status-pill svg { width: 21px; height: 21px; flex: 0 0 auto; }
     .status-actions { display: flex; flex-wrap: wrap; gap: 9px; }
     .status-actions > button { flex: 1 1 150px; }
+    .readonly-status-note { margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
 
     .secondary-button {
       min-height: 47px;
@@ -1180,7 +1181,7 @@
               </div>
             </div>
             <div class="status-pill pending" id="tawkeelStatus" role="status"></div>
-            <div class="status-actions" id="tawkeelActions"></div>
+            <p class="readonly-status-note" id="tawkeelActions"></p>
           </article>
 
           <article class="status-card" aria-labelledby="ramiHeading">
@@ -1193,7 +1194,7 @@
               </div>
             </div>
             <div class="status-pill pending" id="ramiStatus" role="status"></div>
-            <div class="status-actions" id="ramiActions"></div>
+            <p class="readonly-status-note" id="ramiActions"></p>
           </article>
 
           <article class="status-card slaughter-card" aria-labelledby="slaughterHeading">
@@ -1217,56 +1218,6 @@
 
     <footer class="site-footer">شركة طوى الشرق · نظام إدارة الهدي</footer>
   </div>
-
-  <dialog id="tawkeelDialog" aria-labelledby="tawkeelDialogTitle">
-    <div class="dialog-shell">
-      <div class="dialog-header">
-        <div>
-          <h2 id="tawkeelDialogTitle">نص التوكيل</h2>
-          <p>اقرأ النص كاملًا قبل اتخاذ القرار.</p>
-        </div>
-        <button class="icon-button" type="button" data-close-dialog aria-label="إغلاق النافذة">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <div class="dialog-body">
-        <p class="proxy-text" id="proxyTextContent" role="status" aria-live="polite">جارٍ تحميل نص التوكيل…</p>
-      </div>
-      <div class="dialog-actions">
-        <button class="secondary-button" type="button" data-close-dialog>إغلاق</button>
-        <button class="primary-button" id="acceptTawkeelButton" type="button">أوافق على التوكيل</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="correctionDialog" aria-labelledby="correctionDialogTitle">
-    <div class="dialog-shell">
-      <div class="dialog-header">
-        <div>
-          <h2 id="correctionDialogTitle">تصحيح الحالة</h2>
-          <p>راجع أثر الإجراء قبل التأكيد.</p>
-        </div>
-        <button class="icon-button" type="button" data-close-dialog aria-label="إغلاق النافذة">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <div class="dialog-body">
-        <div class="confirm-copy">
-          <div class="status-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8v4l2.5 2.5"/><circle cx="12" cy="12" r="9"/></svg>
-          </div>
-          <p id="correctionCopy"></p>
-        </div>
-        <p class="keyboard-hint">سيتم تحديث الحالة بعد تأكيد الخادم للعملية.</p>
-      </div>
-      <div class="dialog-actions">
-        <button class="secondary-button" type="button" data-close-dialog>العودة</button>
-        <button class="danger-button" id="confirmCorrectionButton" type="button">تأكيد التصحيح</button>
-      </div>
-    </div>
-  </dialog>
-
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script src="./pilgrim-app.js" defer></script>
 </body>

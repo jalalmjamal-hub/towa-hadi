@@ -2,14 +2,12 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const handler = require("../api/pilgrim");
 
-const requestId = "9f1fb75a-522b-4e8d-a5a2-f13d9f9e8548";
 const record = {
-  name: "اسم اصطناعي للاختبار",
-  tawkeel: false,
-  rami: true,
+  name: "حاج اصطناعي للاختبار",
+  tawkeel: true,
+  rami: false,
   slaughter: "not_done"
 };
-const revision = "a".repeat(64);
 
 function fakeResponse() {
   return {
@@ -18,35 +16,6 @@ function fakeResponse() {
     setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
     end(value) { this.body = JSON.parse(value); }
   };
-}
-
-function inputFor(action) {
-  const input = { action };
-  if (!["pilgrim.proxyText", "pilgrim.season"].includes(action)) {
-    input.lookup = "١٠١٢٣٤٥٦٧٨";
-  }
-  if (action.startsWith("pilgrim.confirm") || action.startsWith("pilgrim.cancel")) {
-    input.expectedVersion = 2;
-    input.requestId = requestId;
-  }
-  if (action === "pilgrim.confirmProxy") input.proxyTextRevision = revision;
-  return input;
-}
-
-function upstreamFor(action, request) {
-  if (action === "pilgrim.lookup" || action.startsWith("pilgrim.confirm") ||
-      action.startsWith("pilgrim.cancel")) {
-    const data = { record, version: 3 };
-    if (action !== "pilgrim.lookup") data.requestId = request.requestId;
-    return { ok: true, data };
-  }
-  if (action === "pilgrim.slaughterStatus") {
-    return { ok: true, data: { status: "done" } };
-  }
-  if (action === "pilgrim.proxyText") {
-    return { ok: true, data: { text: "نص التوكيل الاصطناعي", revision } };
-  }
-  return { ok: true, data: { year: "1448" } };
 }
 
 async function invoke(input, options = {}) {
@@ -70,49 +39,55 @@ test.beforeEach(() => {
   process.env.PILGRIM_API_TOKEN = "synthetic-test-secret-with-at-least-32-chars";
 });
 
-test("forwards only the eight fixed pilgrim actions and returns sanitized shapes", async () => {
+test("forwards only lookup and season without caching personal data", async () => {
   const originalFetch = global.fetch;
   const forwarded = [];
   global.fetch = async (url, options) => {
     const payload = JSON.parse(options.body);
     forwarded.push({ url, options, payload });
-    return { ok: true, text: async () => JSON.stringify(upstreamFor(payload.action, payload)) };
+    const data = payload.action === "pilgrim.lookup"
+      ? { seasonYear: "1448", record }
+      : { year: "1448" };
+    return { ok: true, text: async () => JSON.stringify({ ok: true, data }) };
   };
   try {
-    const actions = [
-      "pilgrim.lookup", "pilgrim.proxyText", "pilgrim.confirmProxy",
-      "pilgrim.cancelProxy", "pilgrim.confirmRami", "pilgrim.cancelRami",
-      "pilgrim.slaughterStatus", "pilgrim.season"
-    ];
-    for (const [index, action] of actions.entries()) {
-      const request = inputFor(action);
-      const response = await invoke(request, { ip: `198.51.100.${index + 1}` });
-      assert.equal(response.statusCode, 200, action);
-      assert.equal(response.body.ok, true, action);
-      assert.equal(forwarded[index].payload.action, action);
-      assert.equal(forwarded[index].payload.apiToken, process.env.PILGRIM_API_TOKEN);
-      assert.equal(response.headers["cache-control"], "no-store, private, max-age=0");
-      assert.equal(JSON.stringify(response.body).includes(process.env.PILGRIM_API_TOKEN), false);
-      assert.equal(JSON.stringify(response.body).includes("lookup"), false);
-    }
-    assert.equal(forwarded.length, actions.length);
+    const lookup = await invoke({ action: "pilgrim.lookup", lookup: "0012345678" });
+    assert.equal(lookup.statusCode, 200);
+    assert.deepEqual(lookup.body.data, {
+      seasonYear: "1448",
+      record
+    });
+    assert.equal(forwarded[0].payload.lookup, "0012345678");
+    assert.equal(forwarded[0].payload.apiToken, process.env.PILGRIM_API_TOKEN);
+    assert.equal(forwarded[0].options.cache, "no-store");
+    assert.equal(lookup.headers["cache-control"], "no-store, private, max-age=0");
+    assert.equal(JSON.stringify(lookup.body).includes("0012345678"), false);
+    assert.equal(JSON.stringify(lookup.body).includes(process.env.PILGRIM_API_TOKEN), false);
+
+    const season = await invoke({ action: "pilgrim.season" });
+    assert.equal(season.statusCode, 200);
+    assert.deepEqual(season.body.data, { year: "1448" });
+    assert.equal(forwarded.length, 2);
   } finally {
     global.fetch = originalFetch;
   }
 });
 
-test("rejects unknown actions, malformed identifiers, and invalid writes before upstream", async () => {
+test("rejects write, synthetic-text, unknown, and extra-field requests before upstream", async () => {
   const originalFetch = global.fetch;
   let calls = 0;
   global.fetch = async () => { calls += 1; throw new Error("should not be called"); };
   try {
-    const cases = [
-      { action: "search", id: "1012345678" },
+    for (const input of [
+      { action: "pilgrim.confirmRami", lookup: "0012345678" },
+      { action: "pilgrim.cancelProxy", lookup: "0012345678" },
+      { action: "pilgrim.proxyText" },
+      { action: "pilgrim.slaughterStatus", lookup: "0012345678" },
+      { action: "search", id: "0012345678" },
       { action: "pilgrim.lookup", lookup: "name@example.com" },
-      { action: "pilgrim.confirmRami", lookup: "1012345678", expectedVersion: 0, requestId }
-    ];
-    for (const request of cases) {
-      const response = await invoke(request);
+      { action: "pilgrim.lookup", lookup: "0012345678", id: "another-value" }
+    ]) {
+      const response = await invoke(input);
       assert.equal(response.statusCode, 400);
       assert.equal(response.body.ok, false);
       assert.equal(response.body.error.code, "INVALID_REQUEST");
@@ -124,7 +99,7 @@ test("rejects unknown actions, malformed identifiers, and invalid writes before 
 });
 
 test("rejects methods and non-JSON bodies with no-store headers", async () => {
-  const method = await invoke(inputFor("pilgrim.season"), { method: "GET" });
+  const method = await invoke({ action: "pilgrim.season" }, { method: "GET" });
   assert.equal(method.statusCode, 405);
   assert.equal(method.headers.allow, "POST");
   const type = await invoke({}, { contentType: "text/plain" });
@@ -132,22 +107,25 @@ test("rejects methods and non-JSON bodies with no-store headers", async () => {
   assert.equal(type.headers["cache-control"], "no-store, private, max-age=0");
 });
 
-test("does not pass internal upstream messages or personal data to callers", async () => {
+test("sanitizes personal data and internal details from upstream errors", async () => {
   const originalFetch = global.fetch;
   global.fetch = async () => ({
     ok: true,
     text: async () => JSON.stringify({
       ok: false,
-      error: { code: "UNAVAILABLE", message: "private id 1012345678 and token secret" }
+      error: {
+        code: "SLAUGHTER_STATUS_UNAVAILABLE",
+        message: "private id 0012345678 and token secret"
+      }
     })
   });
   try {
-    const response = await invoke(inputFor("pilgrim.lookup"));
+    const response = await invoke({ action: "pilgrim.lookup", lookup: "0012345678" });
     const serialized = JSON.stringify(response.body);
     assert.equal(response.statusCode, 503);
-    assert.equal(serialized.includes("1012345678"), false);
+    assert.equal(serialized.includes("0012345678"), false);
     assert.equal(serialized.includes("secret"), false);
-    assert.equal(response.body.error.code, "UNAVAILABLE");
+    assert.equal(response.body.error.code, "SLAUGHTER_STATUS_UNAVAILABLE");
   } finally {
     global.fetch = originalFetch;
   }
@@ -155,12 +133,12 @@ test("does not pass internal upstream messages or personal data to callers", asy
 
 test("fails closed when the server-side endpoint or token is missing", async () => {
   delete process.env.PILGRIM_API_TOKEN;
-  const response = await invoke(inputFor("pilgrim.lookup"));
+  const response = await invoke({ action: "pilgrim.season" });
   assert.equal(response.statusCode, 503);
   assert.equal(response.body.error.code, "UNAVAILABLE");
   process.env.PILGRIM_API_TOKEN = "synthetic-test-secret-with-at-least-32-chars";
   process.env.PILGRIM_APPS_SCRIPT_URL = "https://example.com/anything";
-  const invalidUrl = await invoke(inputFor("pilgrim.lookup"));
+  const invalidUrl = await invoke({ action: "pilgrim.season" });
   assert.equal(invalidUrl.statusCode, 503);
 });
 

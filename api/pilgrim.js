@@ -1,32 +1,14 @@
 const ALLOWED_ACTIONS = new Set([
   "pilgrim.lookup",
-  "pilgrim.proxyText",
-  "pilgrim.confirmProxy",
-  "pilgrim.cancelProxy",
-  "pilgrim.confirmRami",
-  "pilgrim.cancelRami",
-  "pilgrim.slaughterStatus",
   "pilgrim.season"
-]);
-
-const WRITE_ACTIONS = new Set([
-  "pilgrim.confirmProxy",
-  "pilgrim.cancelProxy",
-  "pilgrim.confirmRami",
-  "pilgrim.cancelRami"
 ]);
 
 const ERROR_MESSAGES = {
   INVALID_REQUEST: "الطلب غير صالح.",
   FORBIDDEN: "تعذر إتمام الطلب.",
   NOT_FOUND: "لم يتم العثور على سجل.",
-  AMBIGUOUS_LOOKUP: "تعذر تحديد سجل واحد بهذا الجوال. استخدم رقم الهوية.",
-  VERSION_CONFLICT: "تغيرت الحالة؛ تم إرجاع الحالة الحالية.",
-  PROXY_TEXT_UNAVAILABLE: "نص التوكيل غير متاح.",
-  PROXY_TEXT_CHANGED: "تغير نص التوكيل؛ أعد قراءته قبل الموافقة.",
-  NEEDS_REVIEW: "الحالة تحتاج إلى مراجعة.",
-  BLOCKED: "لا يمكن تعديل الحالة بعد تسجيل الذبح.",
-  BUSY: "النظام مشغول؛ أعد المحاولة لاحقًا.",
+  AMBIGUOUS_LOOKUP: "يوجد أكثر من سجل مرتبط بهذا الرقم. يرجى البحث باستخدام رقم الهوية.",
+  SLAUGHTER_STATUS_UNAVAILABLE: "تعذر التحقق من حالة الذبح؛ لم يتم افتراض أنها غير منفذة.",
   RATE_LIMITED: "تكررت الطلبات بسرعة. انتظر قليلًا ثم أعد المحاولة.",
   UNAVAILABLE: "الخدمة غير متاحة حاليًا."
 };
@@ -37,11 +19,6 @@ const RATE_LIMIT = 30;
 const MAX_RATE_BUCKETS = 500;
 const MAX_BODY_BYTES = 4096;
 const UPSTREAM_TIMEOUT_MS = 12000;
-
-function isUuid(value) {
-  return typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
 
 function normalizeDigits(value) {
   return value.replace(/[٠-٩۰-۹]/g, digit =>
@@ -55,10 +32,16 @@ function validateRequest(input) {
     return { error: "INVALID_REQUEST" };
   }
   const action = input.action;
-  if (action === "pilgrim.proxyText" || action === "pilgrim.season") {
+  if (action === "pilgrim.season") {
+    if (Object.keys(input).some(key => key !== "action")) {
+      return { error: "INVALID_REQUEST" };
+    }
     return { value: { action } };
   }
 
+  if (Object.keys(input).some(key => key !== "action" && key !== "lookup")) {
+    return { error: "INVALID_REQUEST" };
+  }
   if (typeof input.lookup !== "string" || input.lookup.length > 32 ||
       !/^[0-9٠-٩۰-۹+\s().-]+$/.test(input.lookup)) {
     return { error: "INVALID_REQUEST" };
@@ -67,51 +50,27 @@ function validateRequest(input) {
   if (digits.length < 8 || digits.length > 18) {
     return { error: "INVALID_REQUEST" };
   }
-  const value = { action, lookup: input.lookup };
-  if (WRITE_ACTIONS.has(action)) {
-    if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 1 ||
-        !isUuid(input.requestId)) {
-      return { error: "INVALID_REQUEST" };
-    }
-    value.expectedVersion = input.expectedVersion;
-    value.requestId = input.requestId;
-  }
-  if (action === "pilgrim.confirmProxy") {
-    if (typeof input.proxyTextRevision !== "string" ||
-        !/^[0-9a-f]{64}$/i.test(input.proxyTextRevision)) {
-      return { error: "INVALID_REQUEST" };
-    }
-    value.proxyTextRevision = input.proxyTextRevision;
-  }
-  return { value };
+  return { value: { action, lookup: input.lookup } };
 }
 
-function responseData(action, data, requestId) {
+function responseData(action, data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-  if (action === "pilgrim.lookup" || WRITE_ACTIONS.has(action)) {
+  if (action === "pilgrim.lookup") {
     const record = data.record;
     if (!record || typeof record.name !== "string" ||
         typeof record.tawkeel !== "boolean" || typeof record.rami !== "boolean" ||
-        !["done", "not_done", "unavailable"].includes(record.slaughter) ||
-        !Number.isSafeInteger(data.version) || data.version < 1) return null;
-    const safeRecord = {
-      name: record.name,
-      tawkeel: record.tawkeel,
-      rami: record.rami,
-      slaughter: record.slaughter
+        !["done", "not_done"].includes(record.slaughter) ||
+        typeof data.seasonYear !== "string" ||
+        !/^(14|15)\d{2}$/.test(data.seasonYear)) return null;
+    return {
+      record: {
+        name: record.name,
+        tawkeel: record.tawkeel,
+        rami: record.rami,
+        slaughter: record.slaughter
+      },
+      seasonYear: data.seasonYear
     };
-    if (action === "pilgrim.lookup") return { record: safeRecord, version: data.version };
-    if (data.requestId !== requestId) return null;
-    return { record: safeRecord, version: data.version, requestId };
-  }
-  if (action === "pilgrim.slaughterStatus") {
-    return ["done", "not_done"].includes(data.status) ? { status: data.status } : null;
-  }
-  if (action === "pilgrim.proxyText") {
-    return typeof data.text === "string" && data.text.trim() &&
-      typeof data.revision === "string" && /^[0-9a-f]{64}$/i.test(data.revision)
-      ? { text: data.text, revision: data.revision }
-      : null;
   }
   if (action === "pilgrim.season") {
     return typeof data.year === "string" && /^(14|15)\d{2}$/.test(data.year)
@@ -121,7 +80,7 @@ function responseData(action, data, requestId) {
   return null;
 }
 
-function publicError(code, retryable = false, current) {
+function publicError(code, retryable = false) {
   const knownCode = Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, code)
     ? code
     : "UNAVAILABLE";
@@ -130,23 +89,6 @@ function publicError(code, retryable = false, current) {
     message: ERROR_MESSAGES[knownCode],
     retryable: retryable === true
   };
-  if (knownCode === "VERSION_CONFLICT" && current &&
-      current.record && Number.isSafeInteger(current.version) && current.version > 0) {
-    const record = current.record;
-    if (typeof record.name === "string" &&
-        typeof record.tawkeel === "boolean" && typeof record.rami === "boolean" &&
-        ["done", "not_done", "unavailable"].includes(record.slaughter)) {
-      error.current = {
-        record: {
-          name: record.name,
-          tawkeel: record.tawkeel,
-          rami: record.rami,
-          slaughter: record.slaughter
-        },
-        version: current.version
-      };
-    }
-  }
   return { ok: false, error };
 }
 
@@ -265,19 +207,11 @@ async function handler(req, res) {
       const status = code === "NOT_FOUND" ? 404
         : code === "FORBIDDEN" ? 403
           : code === "INVALID_REQUEST" ? 400
-            : code === "VERSION_CONFLICT" ? 409
-              : code === "BUSY" ? 503
-                : code === "AMBIGUOUS_LOOKUP" ? 409
-                  : code === "BLOCKED" || code === "NEEDS_REVIEW" ||
-                    code === "PROXY_TEXT_CHANGED" ? 409
-                    : 503;
-      return send(res, status, publicError(
-        code,
-        upstream.error && upstream.error.retryable === true,
-        upstream.error && upstream.error.current
-      ));
+            : code === "AMBIGUOUS_LOOKUP" ? 409
+              : 503;
+      return send(res, status, publicError(code, upstream.error && upstream.error.retryable === true));
     }
-    const data = responseData(validation.value.action, upstream.data, validation.value.requestId);
+    const data = responseData(validation.value.action, upstream.data);
     if (!data) return send(res, 502, publicError("UNAVAILABLE", true));
     return send(res, 200, { ok: true, data });
   } catch {
