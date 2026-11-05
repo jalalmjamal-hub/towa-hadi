@@ -46,7 +46,7 @@ test("forwards only lookup and season without caching personal data", async () =
     const payload = JSON.parse(options.body);
     forwarded.push({ url, options, payload });
     const data = payload.action === "pilgrim.lookup"
-      ? { seasonYear: "1448", record }
+      ? { seasonYear: "1448", record, version: 1, recordRef: "a".repeat(64) }
       : { year: "1448" };
     return { ok: true, text: async () => JSON.stringify({ ok: true, data }) };
   };
@@ -55,7 +55,9 @@ test("forwards only lookup and season without caching personal data", async () =
     assert.equal(lookup.statusCode, 200);
     assert.deepEqual(lookup.body.data, {
       seasonYear: "1448",
-      record
+      record,
+      version: 1,
+      recordRef: "a".repeat(64)
     });
     assert.equal(forwarded[0].payload.lookup, "0012345678");
     assert.equal(forwarded[0].payload.apiToken, process.env.PILGRIM_API_TOKEN);
@@ -73,16 +75,27 @@ test("forwards only lookup and season without caching personal data", async () =
   }
 });
 
-test("rejects write, synthetic-text, unknown, and extra-field requests before upstream", async () => {
+test("rejects unknown, malformed, injected-field, and consent-less requests before upstream", async () => {
   const originalFetch = global.fetch;
   let calls = 0;
   global.fetch = async () => { calls += 1; throw new Error("should not be called"); };
+  const write = {
+    lookup: "0012345678", expectedVersion: 1, recordRef: "a".repeat(64),
+    seasonYear: "1448", requestId: "123e4567-e89b-42d3-a456-426614174000"
+  };
   try {
     for (const input of [
       { action: "pilgrim.confirmRami", lookup: "0012345678" },
       { action: "pilgrim.cancelProxy", lookup: "0012345678" },
-      { action: "pilgrim.proxyText" },
+      { action: "pilgrim.proxyText", lookup: "0012345678" },
       { action: "pilgrim.slaughterStatus", lookup: "0012345678" },
+      { action: "pilgrim.slaughter.confirm", ...write },
+      { action: "pilgrim.rami.confirm", ...write, column: "G" },
+      { action: "pilgrim.rami.confirm", ...write, row: 2 },
+      { action: "pilgrim.rami.confirm", ...write, consent: true },
+      { action: "pilgrim.rami.confirm", ...write, expectedVersion: 0 },
+      { action: "pilgrim.rami.confirm", ...write, requestId: "x" },
+      { action: "pilgrim.rami.confirm", lookup: "0012345678" },
       { action: "search", id: "0012345678" },
       { action: "pilgrim.lookup", lookup: "name@example.com" },
       { action: "pilgrim.lookup", lookup: "0012345678", id: "another-value" }
@@ -92,6 +105,11 @@ test("rejects write, synthetic-text, unknown, and extra-field requests before up
       assert.equal(response.body.ok, false);
       assert.equal(response.body.error.code, "INVALID_REQUEST");
     }
+    const noConsent = await invoke({
+      action: "pilgrim.tawkeel.confirm", ...write, proxyTextRevision: "b".repeat(64)
+    });
+    assert.equal(noConsent.statusCode, 400);
+    assert.equal(noConsent.body.error.code, "CONSENT_REQUIRED");
     assert.equal(calls, 0);
   } finally {
     global.fetch = originalFetch;

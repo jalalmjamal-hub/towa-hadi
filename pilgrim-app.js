@@ -2,6 +2,9 @@
   const state = {
     lookup: "",
     record: null,
+    version: 0,
+    recordRef: "",
+    seasonYear: "",
     busy: false
   };
   const icons = {
@@ -69,8 +72,7 @@
     document.getElementById("pilgrimName").textContent = state.record.name;
     setPill("tawkeelStatus", state.record.tawkeel, "تم التوكيل", "لم يتم التوكيل بعد");
     setPill("ramiStatus", state.record.rami, "تم الرمي", "لم يتم الرمي بعد");
-    document.getElementById("tawkeelActions").textContent = "للعرض فقط في هذه المرحلة.";
-    document.getElementById("ramiActions").textContent = "للعرض فقط في هذه المرحلة.";
+    renderActions();
     const done = state.record.slaughter === "done";
     const slaughter = document.getElementById("slaughterStatusArea");
     slaughter.replaceChildren();
@@ -81,8 +83,171 @@
     slaughter.append(pill);
   }
 
+  function actionButton(label, className, handler) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.textContent = label;
+    button.disabled = state.busy;
+    button.addEventListener("click", handler);
+    return button;
+  }
+
+  function renderActions() {
+    const tawkeel = document.getElementById("tawkeelActions");
+    const rami = document.getElementById("ramiActions");
+    tawkeel.replaceChildren(state.record.tawkeel
+      ? actionButton("تصحيح حالة التوكيل", "danger-button", () => openCorrection("tawkeel"))
+      : actionButton("قراءة التوكيل وتأكيده", "primary-button", openProxyDialog));
+    rami.replaceChildren(state.record.rami
+      ? actionButton("تصحيح حالة الرمي", "danger-button", () => openCorrection("rami"))
+      : actionButton("تأكيد إتمام الرمي", "primary-button", openRamiConfirm));
+  }
+
+  function toast(message, isError) {
+    const element = document.getElementById("pilgrimToast");
+    element.textContent = message;
+    element.className = `toast${isError ? " error" : ""}`;
+    element.hidden = false;
+    window.clearTimeout(toast.timer);
+    toast.timer = window.setTimeout(() => { element.hidden = true; }, 5000);
+  }
+
+  // لا يُعرض نجاح قبل استجابة الخادم؛ الحالة الجديدة تأتي من الاستجابة فقط.
+  async function writeAction(action, extra = {}) {
+    if (state.busy || !state.record) return false;
+    state.busy = true;
+    renderActions();
+    try {
+      const result = await api(action, {
+        lookup: state.lookup,
+        expectedVersion: state.version,
+        recordRef: state.recordRef,
+        seasonYear: state.seasonYear,
+        requestId: crypto.randomUUID(),
+        ...extra
+      });
+      state.record = result.record;
+      state.version = result.version;
+      state.recordRef = result.recordRef;
+      state.busy = false;
+      renderRecord();
+      toast("تم تحديث الحالة.", false);
+      return true;
+    } catch (error) {
+      state.busy = false;
+      if (error.code === "VERSION_CONFLICT") {
+        await refreshRecord();
+        toast(publicMessage(error.code), true);
+      } else {
+        renderActions();
+        toast(publicMessage(error.code), true);
+      }
+      return false;
+    }
+  }
+
+  async function refreshRecord() {
+    try {
+      const result = await api("pilgrim.lookup", { lookup: state.lookup });
+      applyLookup(result);
+      renderRecord();
+    } catch {
+      renderActions();
+    }
+  }
+
+  const proxyDialog = document.getElementById("proxyDialog");
+  const proxyConsent = document.getElementById("proxyConsent");
+  const proxyConfirm = document.getElementById("proxyConfirmButton");
+  const proxyError = document.getElementById("proxyDialogError");
+  let proxyRevision = "";
+
+  function syncProxyConfirm() {
+    proxyConfirm.disabled = !(proxyRevision && proxyConsent.checked) || state.busy;
+  }
+
+  async function openProxyDialog() {
+    proxyRevision = "";
+    proxyConsent.checked = false;
+    document.getElementById("proxyConsentRow").hidden = true;
+    proxyError.hidden = true;
+    document.getElementById("proxyText").textContent = "جار تحميل نص التوكيل…";
+    syncProxyConfirm();
+    proxyDialog.showModal();
+    try {
+      const result = await api("pilgrim.proxyText");
+      document.getElementById("proxyText").textContent = result.text;
+      proxyRevision = result.revision;
+      document.getElementById("proxyConsentRow").hidden = false;
+    } catch {
+      document.getElementById("proxyText").textContent = "";
+      proxyError.textContent = "تعذر تحميل نص التوكيل. أغلق النافذة وحاول مرة أخرى.";
+      proxyError.hidden = false;
+    }
+    syncProxyConfirm();
+  }
+
+  proxyConsent.addEventListener("change", syncProxyConfirm);
+  document.getElementById("proxyCancelButton").addEventListener("click", () => proxyDialog.close());
+  proxyConfirm.addEventListener("click", async () => {
+    if (!proxyRevision || !proxyConsent.checked) return;
+    proxyConfirm.disabled = true;
+    const ok = await writeAction("pilgrim.tawkeel.confirm", {
+      consent: true,
+      proxyTextRevision: proxyRevision
+    });
+    if (ok) proxyDialog.close();
+    else syncProxyConfirm();
+  });
+
+  const confirmDialog = document.getElementById("confirmDialog");
+  const confirmAccept = document.getElementById("confirmDialogAccept");
+  let confirmAction = "";
+
+  function openConfirm(title, text, acceptLabel, action) {
+    document.getElementById("confirmDialogTitle").textContent = title;
+    document.getElementById("confirmDialogText").textContent = text;
+    confirmAccept.textContent = acceptLabel;
+    confirmAction = action;
+    confirmAccept.disabled = false;
+    confirmDialog.showModal();
+  }
+
+  function openRamiConfirm() {
+    openConfirm("تأكيد إتمام الرمي", "هل أتممت الرمي وتريد تسجيله؟", "تأكيد إتمام الرمي", "pilgrim.rami.confirm");
+  }
+
+  function openCorrection(kind) {
+    if (kind === "tawkeel") {
+      openConfirm("تصحيح حالة التوكيل", "سيتم إلغاء حالة التوكيل المسجلة. هل تريد المتابعة؟", "تصحيح حالة التوكيل", "pilgrim.tawkeel.correct");
+    } else {
+      openConfirm("تصحيح حالة الرمي", "سيتم التراجع عن حالة الرمي المسجلة. هل تريد المتابعة؟", "تصحيح حالة الرمي", "pilgrim.rami.correct");
+    }
+  }
+
+  document.getElementById("confirmDialogCancel").addEventListener("click", () => confirmDialog.close());
+  confirmAccept.addEventListener("click", async () => {
+    confirmAccept.disabled = true;
+    await writeAction(confirmAction);
+    confirmDialog.close();
+  });
+
+  function applyLookup(result) {
+    state.record = result.record;
+    state.version = result.version;
+    state.recordRef = result.recordRef;
+    state.seasonYear = result.seasonYear;
+  }
+
   function publicMessage(code) {
     const messages = {
+      VERSION_CONFLICT: "تغيرت حالة السجل، وتم تحديث العرض.",
+      PROXY_TEXT_CHANGED: "تغير نص التوكيل. أعد قراءته قبل الموافقة.",
+      CONSENT_REQUIRED: "يلزم الموافقة الصريحة على نص التوكيل.",
+      NEEDS_REVIEW: "الحالة تحتاج إلى مراجعة من الإدارة.",
+      BLOCKED: "لا يمكن تعديل التوكيل أو الرمي بعد تسجيل الذبح.",
+      BUSY: "النظام مشغول. أعد المحاولة بعد قليل.",
       AMBIGUOUS_LOOKUP: "يوجد أكثر من سجل مرتبط بهذا الرقم. يرجى البحث باستخدام رقم الهوية.",
       NOT_FOUND: "لم يتم العثور على سجل مطابق.",
       SLAUGHTER_STATUS_UNAVAILABLE: "تعذر التحقق من حالة الذبح؛ لم يتم افتراض أنها غير منفذة.",
@@ -105,7 +270,7 @@
     showOnly("loading");
     try {
       const result = await api("pilgrim.lookup", { lookup: value });
-      state.record = result.record;
+      applyLookup(result);
       setSeason(result.seasonYear);
       showOnly("pilgrim");
       renderRecord();

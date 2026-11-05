@@ -639,6 +639,9 @@
 
     .toast.error { border-color: #efd0cd; color: #a33e3e; }
     .toast svg { width: 19px; height: 19px; flex: 0 0 auto; }
+    .toast[hidden] { display: none; }
+    .consent-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; color: var(--navy); font-size: 15px; font-weight: 700; line-height: 1.7; cursor: pointer; }
+    .consent-row input { width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--green); }
 
     dialog {
       width: min(520px, calc(100% - 28px));
@@ -1181,7 +1184,7 @@
               </div>
             </div>
             <div class="status-pill pending" id="tawkeelStatus" role="status"></div>
-            <p class="readonly-status-note" id="tawkeelActions"></p>
+            <div class="status-actions" id="tawkeelActions"></div>
           </article>
 
           <article class="status-card" aria-labelledby="ramiHeading">
@@ -1194,7 +1197,7 @@
               </div>
             </div>
             <div class="status-pill pending" id="ramiStatus" role="status"></div>
-            <p class="readonly-status-note" id="ramiActions"></p>
+            <div class="status-actions" id="ramiActions"></div>
           </article>
 
           <article class="status-card slaughter-card" aria-labelledby="slaughterHeading">
@@ -1218,6 +1221,44 @@
 
     <footer class="site-footer">شركة طوى الشرق · نظام إدارة الهدي</footer>
   </div>
+
+  <dialog id="proxyDialog" aria-labelledby="proxyDialogTitle" dir="rtl">
+    <div class="dialog-shell">
+      <div class="dialog-header">
+        <h2 id="proxyDialogTitle">نص التوكيل</h2>
+        <p>اقرأ النص كاملًا قبل الموافقة.</p>
+      </div>
+      <div class="dialog-body">
+        <div class="proxy-text" id="proxyText" tabindex="0" dir="rtl"></div>
+        <p class="readonly-status-note" id="proxyDialogError" role="alert" hidden></p>
+        <label class="consent-row" id="proxyConsentRow" hidden>
+          <input type="checkbox" id="proxyConsent">
+          <span>قرأت نص التوكيل وأوافق عليه.</span>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="primary-button" id="proxyConfirmButton" disabled>تأكيد التوكيل</button>
+        <button type="button" class="secondary-button" id="proxyCancelButton">إلغاء</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="confirmDialog" aria-labelledby="confirmDialogTitle" dir="rtl">
+    <div class="dialog-shell">
+      <div class="dialog-header">
+        <h2 id="confirmDialogTitle"></h2>
+      </div>
+      <div class="dialog-body">
+        <div class="confirm-copy"><p id="confirmDialogText"></p></div>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="primary-button" id="confirmDialogAccept"></button>
+        <button type="button" class="secondary-button" id="confirmDialogCancel">رجوع</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="pilgrimToast" role="status" hidden></div>
 
   <script src="./pilgrim-app.js" defer></script>
 </body>

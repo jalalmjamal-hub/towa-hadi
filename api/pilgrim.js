@@ -1,7 +1,22 @@
 const ALLOWED_ACTIONS = new Set([
   "pilgrim.lookup",
-  "pilgrim.season"
+  "pilgrim.season",
+  "pilgrim.proxyText",
+  "pilgrim.tawkeel.confirm",
+  "pilgrim.tawkeel.correct",
+  "pilgrim.rami.confirm",
+  "pilgrim.rami.correct"
 ]);
+const WRITE_ACTIONS = new Set([
+  "pilgrim.tawkeel.confirm",
+  "pilgrim.tawkeel.correct",
+  "pilgrim.rami.confirm",
+  "pilgrim.rami.correct"
+]);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const HEX64_PATTERN = /^[0-9a-f]{64}$/;
+const SEASON_PATTERN = /^(14|15)\d{2}$/;
+const MAX_PROXY_TEXT_LENGTH = 20000;
 
 const ERROR_MESSAGES = {
   INVALID_REQUEST: "الطلب غير صالح.",
@@ -9,6 +24,13 @@ const ERROR_MESSAGES = {
   NOT_FOUND: "لم يتم العثور على سجل.",
   AMBIGUOUS_LOOKUP: "يوجد أكثر من سجل مرتبط بهذا الرقم. يرجى البحث باستخدام رقم الهوية.",
   SLAUGHTER_STATUS_UNAVAILABLE: "تعذر التحقق من حالة الذبح؛ لم يتم افتراض أنها غير منفذة.",
+  VERSION_CONFLICT: "تغيرت حالة السجل. أعد البحث ثم حاول مرة أخرى.",
+  PROXY_TEXT_UNAVAILABLE: "نص التوكيل غير متاح حاليًا.",
+  PROXY_TEXT_CHANGED: "تغير نص التوكيل. أعد قراءته قبل الموافقة.",
+  CONSENT_REQUIRED: "يلزم الموافقة الصريحة على نص التوكيل.",
+  NEEDS_REVIEW: "الحالة تحتاج إلى مراجعة من الإدارة.",
+  BLOCKED: "لا يمكن تعديل التوكيل أو الرمي بعد تسجيل الذبح.",
+  BUSY: "النظام مشغول. أعد المحاولة بعد قليل.",
   RATE_LIMITED: "تكررت الطلبات بسرعة. انتظر قليلًا ثم أعد المحاولة.",
   UNAVAILABLE: "الخدمة غير متاحة حاليًا."
 };
@@ -32,14 +54,23 @@ function validateRequest(input) {
     return { error: "INVALID_REQUEST" };
   }
   const action = input.action;
-  if (action === "pilgrim.season") {
+  if (action === "pilgrim.season" || action === "pilgrim.proxyText") {
     if (Object.keys(input).some(key => key !== "action")) {
       return { error: "INVALID_REQUEST" };
     }
     return { value: { action } };
   }
 
-  if (Object.keys(input).some(key => key !== "action" && key !== "lookup")) {
+  const isWrite = WRITE_ACTIONS.has(action);
+  const allowed = new Set(["action", "lookup"]);
+  if (isWrite) {
+    ["expectedVersion", "requestId", "recordRef", "seasonYear"].forEach(key => allowed.add(key));
+    if (action === "pilgrim.tawkeel.confirm") {
+      allowed.add("consent");
+      allowed.add("proxyTextRevision");
+    }
+  }
+  if (Object.keys(input).some(key => !allowed.has(key))) {
     return { error: "INVALID_REQUEST" };
   }
   if (typeof input.lookup !== "string" || input.lookup.length > 32 ||
@@ -50,27 +81,67 @@ function validateRequest(input) {
   if (digits.length < 8 || digits.length > 18) {
     return { error: "INVALID_REQUEST" };
   }
-  return { value: { action, lookup: input.lookup } };
+  const value = { action, lookup: input.lookup };
+  if (!isWrite) return { value };
+
+  if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 1 ||
+      typeof input.requestId !== "string" || !UUID_PATTERN.test(input.requestId) ||
+      typeof input.recordRef !== "string" || !HEX64_PATTERN.test(input.recordRef) ||
+      typeof input.seasonYear !== "string" || !SEASON_PATTERN.test(input.seasonYear)) {
+    return { error: "INVALID_REQUEST" };
+  }
+  Object.assign(value, {
+    expectedVersion: input.expectedVersion,
+    requestId: input.requestId,
+    recordRef: input.recordRef,
+    seasonYear: input.seasonYear
+  });
+  if (action === "pilgrim.tawkeel.confirm") {
+    if (input.consent !== true) return { error: "CONSENT_REQUIRED" };
+    if (typeof input.proxyTextRevision !== "string" ||
+        !HEX64_PATTERN.test(input.proxyTextRevision)) {
+      return { error: "INVALID_REQUEST" };
+    }
+    value.consent = true;
+    value.proxyTextRevision = input.proxyTextRevision;
+  }
+  return { value };
 }
 
 function responseData(action, data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-  if (action === "pilgrim.lookup") {
+  if (action === "pilgrim.lookup" || WRITE_ACTIONS.has(action)) {
     const record = data.record;
     if (!record || typeof record.name !== "string" ||
         typeof record.tawkeel !== "boolean" || typeof record.rami !== "boolean" ||
         !["done", "not_done"].includes(record.slaughter) ||
         typeof data.seasonYear !== "string" ||
-        !/^(14|15)\d{2}$/.test(data.seasonYear)) return null;
-    return {
+        !SEASON_PATTERN.test(data.seasonYear) ||
+        !Number.isSafeInteger(data.version) || data.version < 1 ||
+        typeof data.recordRef !== "string" || !HEX64_PATTERN.test(data.recordRef)) return null;
+    const result = {
       record: {
         name: record.name,
         tawkeel: record.tawkeel,
         rami: record.rami,
         slaughter: record.slaughter
       },
-      seasonYear: data.seasonYear
+      seasonYear: data.seasonYear,
+      version: data.version,
+      recordRef: data.recordRef
     };
+    if (WRITE_ACTIONS.has(action)) {
+      if (typeof data.changed !== "boolean") return null;
+      result.changed = data.changed;
+    }
+    return result;
+  }
+  if (action === "pilgrim.proxyText") {
+    return typeof data.text === "string" && data.text.length > 0 &&
+      data.text.length <= MAX_PROXY_TEXT_LENGTH &&
+      typeof data.revision === "string" && HEX64_PATTERN.test(data.revision)
+      ? { text: data.text, revision: data.revision }
+      : null;
   }
   if (action === "pilgrim.season") {
     return typeof data.year === "string" && /^(14|15)\d{2}$/.test(data.year)
@@ -286,8 +357,10 @@ async function handler(req, res) {
       const status = code === "NOT_FOUND" ? 404
         : code === "FORBIDDEN" ? 403
           : code === "INVALID_REQUEST" ? 400
-            : code === "AMBIGUOUS_LOOKUP" ? 409
-              : 503;
+            : ["AMBIGUOUS_LOOKUP", "VERSION_CONFLICT", "PROXY_TEXT_CHANGED",
+              "NEEDS_REVIEW", "BLOCKED"].includes(code) ? 409
+              : code === "CONSENT_REQUIRED" ? 400
+                : 503;
       return send(res, status, publicError(code, upstream.error && upstream.error.retryable === true));
     }
     const data = responseData(validation.value.action, upstream.data);
