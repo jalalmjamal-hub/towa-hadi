@@ -5,7 +5,8 @@
     version: 0,
     recordRef: "",
     seasonYear: "",
-    busy: false
+    busy: false,
+    writing: false
   };
   const icons = {
     done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5"/></svg>',
@@ -88,7 +89,7 @@
     button.type = "button";
     button.className = className;
     button.textContent = label;
-    button.disabled = state.busy;
+    button.disabled = state.writing;
     button.addEventListener("click", handler);
     return button;
   }
@@ -115,8 +116,8 @@
 
   // لا يُعرض نجاح قبل استجابة الخادم؛ الحالة الجديدة تأتي من الاستجابة فقط.
   async function writeAction(action, extra = {}) {
-    if (state.busy || !state.record) return false;
-    state.busy = true;
+    if (state.writing || !state.record) return false;
+    state.writing = true;
     renderActions();
     try {
       const result = await api(action, {
@@ -130,12 +131,12 @@
       state.record = result.record;
       state.version = result.version;
       state.recordRef = result.recordRef;
-      state.busy = false;
+      state.writing = false;
       renderRecord();
       toast("تم تحديث الحالة.", false);
       return true;
     } catch (error) {
-      state.busy = false;
+      state.writing = false;
       if (error.code === "VERSION_CONFLICT") {
         await refreshRecord();
         toast(publicMessage(error.code), true);
@@ -164,7 +165,7 @@
   let proxyRevision = "";
 
   function syncProxyConfirm() {
-    proxyConfirm.disabled = !(proxyRevision && proxyConsent.checked) || state.busy;
+    proxyConfirm.disabled = !(proxyRevision && proxyConsent.checked) || state.writing;
   }
 
   async function openProxyDialog() {
