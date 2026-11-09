@@ -32,6 +32,7 @@ const ERROR_MESSAGES = {
   BLOCKED: "لا يمكن تعديل التوكيل أو الرمي بعد تسجيل الذبح.",
   BUSY: "النظام مشغول. أعد المحاولة بعد قليل.",
   RATE_LIMITED: "تكررت الطلبات بسرعة. انتظر قليلًا ثم أعد المحاولة.",
+  PORTAL_CLOSED: "بوابة الحجاج مغلقة حاليًا.",
   UNAVAILABLE: "الخدمة غير متاحة حاليًا."
 };
 
@@ -354,6 +355,9 @@ async function handler(req, res) {
         stage: "application_result",
         errorCode: safeCode
       });
+      if (code === "PORTAL_CLOSED") {
+        return send(res, 423, publicError("PORTAL_CLOSED", false));
+      }
       const status = code === "NOT_FOUND" ? 404
         : code === "FORBIDDEN" ? 403
           : code === "INVALID_REQUEST" ? 400

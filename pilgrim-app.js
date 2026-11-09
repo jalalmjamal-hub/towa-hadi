@@ -6,7 +6,8 @@
     recordRef: "",
     seasonYear: "",
     busy: false,
-    writing: false
+    writing: false,
+    portalClosed: false
   };
   const icons = {
     done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5"/></svg>',
@@ -23,6 +24,9 @@
   const searchInput = document.getElementById("searchValue");
   const searchButton = document.getElementById("searchButton");
   const searchMessage = document.getElementById("searchMessage");
+  const networkErrorTitle = document.getElementById("networkErrorTitle");
+  const networkErrorDefaultTitle = networkErrorTitle.textContent;
+  const retrySearchButton = document.querySelector("[data-action='retry-search']");
 
   function showOnly(viewName) {
     document.body.classList.toggle("login-screen", viewName === "login");
@@ -47,8 +51,10 @@
       if (!response.ok || !payload || payload.ok !== true) {
         const error = new Error(payload?.error?.message || "تعذر إكمال الطلب.");
         error.code = payload?.error?.code || "UNAVAILABLE";
+        if (error.code === "PORTAL_CLOSED") state.portalClosed = true;
         throw error;
       }
+      state.portalClosed = false;
       return payload.data;
     } finally {
       window.clearTimeout(timer);
@@ -89,7 +95,7 @@
     button.type = "button";
     button.className = className;
     button.textContent = label;
-    button.disabled = state.writing;
+    button.disabled = state.writing || state.portalClosed;
     button.addEventListener("click", handler);
     return button;
   }
@@ -117,6 +123,10 @@
   // لا يُعرض نجاح قبل استجابة الخادم؛ الحالة الجديدة تأتي من الاستجابة فقط.
   async function writeAction(action, extra = {}) {
     if (state.writing || !state.record) return false;
+    if (state.portalClosed) {
+      toast(publicMessage("PORTAL_CLOSED"), true);
+      return false;
+    }
     state.writing = true;
     renderActions();
     try {
@@ -181,9 +191,11 @@
       document.getElementById("proxyText").textContent = result.text;
       proxyRevision = result.revision;
       document.getElementById("proxyConsentRow").hidden = false;
-    } catch {
+    } catch (error) {
       document.getElementById("proxyText").textContent = "";
-      proxyError.textContent = "تعذر تحميل نص التوكيل. أغلق النافذة وحاول مرة أخرى.";
+      proxyError.textContent = error && error.code === "PORTAL_CLOSED"
+        ? publicMessage("PORTAL_CLOSED")
+        : "تعذر تحميل نص التوكيل. أغلق النافذة وحاول مرة أخرى.";
       proxyError.hidden = false;
     }
     syncProxyConfirm();
@@ -253,7 +265,8 @@
       NOT_FOUND: "لم يتم العثور على سجل مطابق.",
       SLAUGHTER_STATUS_UNAVAILABLE: "تعذر التحقق من حالة الذبح؛ لم يتم افتراض أنها غير منفذة.",
       INVALID_REQUEST: "تعذر التحقق من الرقم المدخل.",
-      RATE_LIMITED: "تكررت الطلبات بسرعة. انتظر قليلًا ثم أعد المحاولة."
+      RATE_LIMITED: "تكررت الطلبات بسرعة. انتظر قليلًا ثم أعد المحاولة.",
+      PORTAL_CLOSED: "بوابة الحجاج مغلقة حاليًا."
     };
     return messages[code] || "تعذر الاتصال بالخدمة. حاول مرة أخرى لاحقًا.";
   }
@@ -278,7 +291,12 @@
     } catch (error) {
       if (error.code === "NOT_FOUND") showOnly("notFound");
       else {
-        document.querySelector("#networkErrorView p").textContent = publicMessage(error.code);
+        const closed = error.code === "PORTAL_CLOSED";
+        networkErrorTitle.textContent = closed ? publicMessage(error.code) : networkErrorDefaultTitle;
+        document.querySelector("#networkErrorView p").textContent = closed
+          ? "لا يمكن الاستعلام أو تسجيل التوكيل والرمي حتى تفتحها الإدارة."
+          : publicMessage(error.code);
+        retrySearchButton.hidden = closed;
         showOnly("networkError");
       }
     }
@@ -309,9 +327,10 @@
     try {
       const result = await api("pilgrim.season");
       setSeason(result.year);
-    } catch {
+    } catch (error) {
+      const closed = error && error.code === "PORTAL_CLOSED";
       document.querySelectorAll("[data-season-year]").forEach(target => {
-        target.textContent = "تعذر تحميل الموسم";
+        target.textContent = closed ? publicMessage("PORTAL_CLOSED") : "تعذر تحميل الموسم";
       });
     }
   }
